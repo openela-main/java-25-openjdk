@@ -52,9 +52,9 @@ public class TestTranslations {
         map.put(Locale.FRANCE, new String[] { "heure normale des Rocheuses", "UTC\u221207:00", "MST",
                                               "heure d\u2019\u00e9t\u00e9 des Rocheuses", "UTC\u221206:00", "MST",
                                               "heure des Rocheuses", "UTC\u221207:00", "MST"});
-        map.put(Locale.GERMANY, new String[] { "Rocky-Mountain-Normalzeit", "GMT-07:00", "MST",
-                                               "Rocky-Mountain-Sommerzeit", "GMT-06:00", "MST",
-                                               "Rocky-Mountain-Zeit", "GMT-07:00", "MST"});
+        map.put(Locale.GERMANY, new String[] { "Rocky-Mountains-Normalzeit", "GMT-07:00", "MST",
+                                               "Rocky-Mountains-Sommerzeit", "GMT-06:00", "MST",
+                                               "Rocky-Mountains-Zeit", "GMT-07:00", "MST"});
         CIUDAD_JUAREZ = Collections.unmodifiableMap(map);
     }
 

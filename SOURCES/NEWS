@@ -3,7 +3,96 @@ Key:
 JDK-X  - https://bugs.openjdk.java.net/browse/JDK-X
 CVE-XXXX-YYYY: https://cve.mitre.org/cgi-bin/cvename.cgi?name=XXXX-YYYY
 
-New in release OpenJDK 22.0.0 (2024-03-19):
+New in release OpenJDK 25.0.1 (2025-10-21):
+===========================================
+
+* CVEs
+  - CVE-2025-53057
+  - CVE-2025-53066
+  - CVE-2025-61748
+* Changes
+  - JDK-8315131: Clarify VarHandle set/get access on 32-bit platforms
+  - JDK-8352637: Enhance bytecode verification
+  - JDK-8356294: Enhance Path Factories
+  - JDK-8356587: Missing object ID X in pool jdk.types.Method
+  - JDK-8357826: Avoid running some jtreg tests when asan is configured
+  - JDK-8358452: JNI exception pending in Java_sun_awt_screencast_ScreencastHelper_remoteDesktopKeyImpl of screencast_pipewire.c:1214 (ID: 51119)
+  - JDK-8358577: Test serviceability/jvmti/thread/GetCurrentContendedMonitor/contmon01/contmon01.java failed: unexpexcted monitor object
+  - JDK-8358819: The first year is not displayed correctly in Japanese Calendar
+  - JDK-8359059: Bump version numbers for 25.0.1
+  - JDK-8359218: RISC-V: Only enable CRC32 intrinsic when AvoidUnalignedAccess == false
+  - JDK-8359270: C2: alignment check should consider base offset when emitting arraycopy runtime call
+  - JDK-8359454: Enhance String handling
+  - JDK-8359596: Behavior change when both -Xlint:options and -Xlint:-options flags are given
+  - JDK-8360179: RISC-V: Only enable BigInteger intrinsics when AvoidUnalignedAccess == false
+  - JDK-8360533: ContainerRuntimeVersionTestUtils fromVersionString fails with some docker versions
+  - JDK-8360647: [XWayland] [OL10] NumPad keys are not triggered
+  - JDK-8360679: Shenandoah: AOT saved adapter calls into broken GC barrier stub
+  - JDK-8360937: Enhance certificate handling
+  - JDK-8361212: Remove AffirmTrust root CAs
+  - JDK-8361532: RISC-V: Several vector tests fail after JDK-8354383
+  - JDK-8361829: [TESTBUG] RISC-V: compiler/vectorization/runner/BasicIntOpTest.java fails with RVV but not Zvbb
+  - JDK-8362109: Change milestone to fcs for all releases
+  - JDK-8362882: Update SubmissionPublisher() specification to reflect use of ForkJoinPool.asyncCommonPool()
+  - JDK-8366223: ZGC: ZPageAllocator::cleanup_failed_commit_multi_partition is broken
+  - JDK-8367031: [backout] Change java.time month/day field types to 'byte'
+  - JDK-8368308: ISO 4217 Amendment 180 Update
+
+Notes on individual issues:
+===========================
+
+core-libs/java.io:serialization:
+
+JDK-8367031: [backout] Change java.time month/day field types to 'byte'
+=======================================================================
+In the initial release of OpenJDK 25, attempting to read serialised
+Class objects created by earlier versions of OpenJDK for several of
+the `java.time` classes would fail with a
+`InvalidClassException`. Similarly, `java.time` Class objects
+serialised with OpenJDK 25 could not be read by older OpenJDK
+versions.  This was due to the type of the day and month fields in
+these classes being changed to `byte`. This change has now been
+reverted and compatibility between OpenJDK 25 and older versions
+restored.
+
+Note that this incompatibility occurred with the `Class` object and
+not an instance of the object i.e. `writeObject(LocalDate.class)`
+would produce incompatible serialised data, but
+`writeObject(LocalDate.now())` would not.
+
+security-libs/java.security:
+
+JDK-8361212: Remove AffirmTrust root CAs
+========================================
+The following root certificates from AffirmTrust, which were
+deactivated in the 21.0.5 release of October 2024, have been removed
+from the `cacerts` keystore:
+
+Alias name: affirmtrustcommercialca [jdk]
+CN=AffirmTrust Commercial
+O=AffirmTrust
+C=US
+SHA256: 03:76:AB:1D:54:C5:F9:80:3C:E4:B2:E2:01:A0:EE:7E:EF:7B:57:B6:36:E8:A9:3C:9B:8D:48:60:C9:6F:5F:A7
+
+Alias name: affirmtrustnetworkingca [jdk]
+CN=AffirmTrust Networking
+O=AffirmTrust
+C=US
+SHA256: 0A:81:EC:5A:92:97:77:F1:45:90:4A:F3:8D:5D:50:9F:66:B5:E2:C5:8F:CD:B5:31:05:8B:0E:17:F3:F0B4:1B
+
+Alias name: affirmtrustpremiumca [jdk]
+CN=AffirmTrust Premium
+O=AffirmTrust
+C=US
+SHA256: 70:A7:3F:7F:37:6B:60:07:42:48:90:45:34:B1:14:82:D5:BF:0E:69:8E:CC:49:8D:F5:25:77:EB:F2:E9:3B:9A
+
+Alias name: affirmtrustpremiumeccca [jdk]
+CN=AffirmTrust Premium ECC
+O=AffirmTrust
+C=US
+SHA256: BD:71:FD:F6:DA:97:E4:CF:62:D1:64:7A:DD:25:81:B0:7D:79:AD:F8:39:7E:B4:EC:BA:9C:5E:84:88:82:14:23
+
+New in release OpenJDK 25.0.0 (2025-09-16):
 ===========================================
 Major changes are listed below.  Some changes may have been backported
 to earlier releases following their first appearance in OpenJDK 22
@@ -15,16 +104,27 @@ NEW FEATURES
 Language Features
 =================
 
-Statements before super(...)
+Flexible Constructor Bodies
 ============================
 https://openjdk.org/jeps/447
+https://openjdk.org/jeps/482
+https://openjdk.org/jeps/492
+https://openjdk.org/jeps/513
 
-In constructors in the Java programming language, allow statements
-that do not reference the instance being created to appear before an
-explicit constructor invocation (i.e. super()).
+In constructors in the Java programming language, allow statements to
+appear before an explicit constructor invocation, i.e., super(..) or
+this(..). The statements cannot reference the instance under
+construction, but they can initialize its fields. Initializing fields
+before invoking another constructor makes a class more reliable when
+methods are overridden.
 
-This is a preview language feature (http://openjdk.java.net/jeps/12)
-introduced in OpenJDK 22 (JEP 447).
+This language feature is now finalised (JEP 513). It was first
+introduced as a preview language feature
+(http://openjdk.java.net/jeps/12) in OpenJDK 22 (JEP 447) under the
+name "Statements before super(...)".  It reached a second preview in
+OpenJDK 23 (JEP 482) with the addition of allowing fields to be
+initialized before invoking another constructor. It reached a third
+preview in OpenJDK 24 (JEP 492).
 
 Unnamed Patterns and Variables
 ==============================
@@ -36,22 +136,37 @@ component without stating the component's name or type, and unnamed
 variables, which can be initialized but not used. Both are denoted by
 an underscore character, _.
 
-This feature is now final. It was a preview feature
+This feature is now finalised (JEP 456). It was a preview feature
 (http://openjdk.java.net/jeps/12) in OpenJDK 21 (JEP 443).
 
-String Templates
-================
-https://openjdk.org/jeps/430
-https://openjdk.org/jeps/459
+Primitive Types in Patterns, instanceof, and switch
+===================================================
+https://openjdk.org/jeps/455
+https://openjdk.org/jeps/488
+https://openjdk.org/jeps/507
 
-Enhance the Java programming language with string templates. String
-templates complement Java's existing string literals and text blocks
-by coupling literal text with embedded expressions and template
-processors to produce specialized results.
+Enhance pattern matching by allowing primitive type patterns in all
+pattern contexts, and extend instanceof and switch to work with all
+primitive types.
 
-This is a preview feature (http://openjdk.java.net/jeps/12) introduced
-in OpenJDK 21 (JEP 430) and reaching its second preview in OpenJDK 22
-(JEP 459).
+This is a preview language feature (http://openjdk.java.net/jeps/12)
+introduced in OpenJDK 23 (JEP 455) with a second preview in OpenJDK 24
+(JEP 488) and reaching a third in OpenJDK 25 (JEP 507).
+
+Module Import Declarations
+==========================
+https://openjdk.org/jeps/476
+https://openjdk.org/jeps/494
+https://openjdk.org/jeps/511
+
+Enhance the Java programming language with the ability to succinctly
+import all of the packages exported by a module. This simplifies the
+reuse of modular libraries, but does not require the importing code to
+be in a module itself.
+
+This language feature is now finalised (JEP 511). It was introduced as
+a preview language feature (http://openjdk.java.net/jeps/12) in
+OpenJDK 23 (JEP 476) and had a second preview in OpenJDK 24 (JEP 494).
 
 Library Features
 ================
@@ -72,25 +187,41 @@ foreign memory (i.e., memory not managed by the JVM), the API enables
 Java programs to call native libraries and process native data without
 the brittleness and danger of JNI.
 
-This API is now finalised. It was first introduced in incubation
-(https://openjdk.java.net/jeps/11) in OpenJDK 17 (JEP 412), and is an
-evolution of the Foreign Memory Access API (OpenJDK 14 through 16) and
-Foreign Linker API (OpenJDK 16) (see release notes for
+This API is now finalised (JEP 454). It was first introduced in
+incubation (https://openjdk.java.net/jeps/11) in OpenJDK 17 (JEP 412),
+and is an evolution of the Foreign Memory Access API (OpenJDK 14
+through 16) and Foreign Linker API (OpenJDK 16) (see release notes for
 java-17-openjdk). OpenJDK 18 saw a second round of incubation (JEP
 419) before its inclusion as a preview feature
 (http://openjdk.java.net/jeps/12) in OpenJDK 19 (JEP 424). A second
 preview took place in OpenJDK 20 (JEP 434) and a third and final
 preview in OpenJDK 21 (JEP 442).
 
+Prepare to Restrict the Use of JNI
+==================================
+https://openjdk.org/jeps/472
+
+Issue warnings about uses of the Java Native Interface (JNI) and
+adjust the Foreign Function & Memory (FFM) API to issue warnings in a
+consistent manner. All such warnings aim to prepare developers for a
+future release that ensures integrity by default by uniformly
+restricting JNI and the FFM API. Application developers can avoid both
+current warnings and future restrictions by selectively enabling these
+interfaces where essential using the --enable-native-access
+command-line option.
+
 Class-File API
 ==============
 https://openjdk.org/jeps/457
+https://openjdk.org/jeps/466
+https://openjdk.org/jeps/484
 
 Provide a standard API for parsing, generating, and transforming Java
 class files.
 
-This is a preview library feature (http://openjdk.java.net/jeps/12)
-introduced in OpenJDK 22 (JEP 457).
+This API is now finalised (JEP 484). It was introduced as a preview
+library feature (http://openjdk.java.net/jeps/12) in OpenJDK 22 (JEP
+457) with a second preview in OpenJDK 23 (JEP 466).
 
 Vector API
 ==========
@@ -101,6 +232,9 @@ https://openjdk.org/jeps/426
 https://openjdk.org/jeps/438
 https://openjdk.org/jeps/448
 https://openjdk.org/jeps/460
+https://openjdk.org/jeps/469
+https://openjdk.org/jeps/489
+https://openjdk.org/jeps/508
 
 Introduce an API to express vector computations that reliably compile
 at runtime to optimal vector hardware instructions on supported CPU
@@ -111,19 +245,23 @@ This is an incubation feature (https://openjdk.java.net/jeps/11)
 introduced in OpenJDK 16 (JEP 338). A second round of incubation took
 place in OpenJDK 17 (JEP 414), OpenJDK 18 (JEP 417) saw a third,
 OpenJDK 19 a fourth (JEP 426), OpenJDK 20 (JEP 438) a fifth, OpenJDK
-21 a sixth (JEP 448) and it reaches its seventh in OpenJDK 22 (JEP
-460).
+21 a sixth (JEP 448), OpenJDK 22 a seventh (JEP 460), OpenJDK 23 an
+eighth (JEP 469), OpenJDK 24 a ninth (JEP 489) and it reaches its
+tenth in OpenJDK 25 (JEP 508).
 
 Stream Gatherers
 ================
 https://openjdk.org/jeps/461
+https://openjdk.org/jeps/473
+https://openjdk.org/jeps/485
 
 Enhance the Stream API to support custom intermediate operations. This
 will allow stream pipelines to transform data in ways that are not
 easily achievable with the existing built-in intermediate operations.
 
-This is a preview library feature (http://openjdk.java.net/jeps/12)
-introduced in OpenJDK 22 (JEP 461).
+This API is now finalised (JEP 485). It was introduced as a preview
+library feature (http://openjdk.java.net/jeps/12) in OpenJDK 22 (JEP
+461) with a second preview in OpenJDK 23 (JEP 473).
 
 Structured Concurrency
 ======================
@@ -131,6 +269,9 @@ https://openjdk.org/jeps/428
 https://openjdk.org/jeps/437
 https://openjdk.org/jeps/453
 https://openjdk.org/jeps/462
+https://openjdk.org/jeps/480
+https://openjdk.org/jeps/499
+https://openjdk.org/jeps/505
 
 Simplify multithreaded programming by introducing an API for
 structured concurrency. Structured concurrency treats multiple tasks
@@ -142,41 +283,124 @@ This API was first introduced in incubation
 (https://openjdk.java.net/jeps/11) in OpenJDK 19 (JEP 428) and had a
 second round of incubation in OpenJDK 20 (JEP 437). It became a
 preview feature (http://openjdk.java.net/jeps/12) in OpenJDK 21 (JEP
-453) and reaches its second preview in OpenJDK 22 (JEP 462).
+453), reached its second preview in OpenJDK 22 (JEP 462), had a third
+preview in OpenJDK 23 (JEP 480), a fourth in OpenJDK 24 (JEP 499) and
+reaches its fifth in OpenJDK 25 (JEP 505).
 
-Implicitly Declared Classes and Instance Main Methods
-=====================================================
+Compact Source Files and Instance Main Methods
+==============================================
 https://openjdk.org/jeps/445
 https://openjdk.org/jeps/463
+https://openjdk.org/jeps/477
+https://openjdk.org/jeps/495
+https://openjdk.org/jeps/512
 
-Evolve the Java language so that students can write their first
-programs without needing to understand language features designed for
-large programs. Far from using a separate dialect of Java, students
-can write streamlined declarations for single-class programs and then
-seamlessly expand their programs to use more advanced features as
-their skills grow.
+Evolve the Java programming language so that beginners can write their
+first programs without needing to understand language features
+designed for large programs. Far from using a separate dialect of the
+language, beginners can write streamlined declarations for
+single-class programs and then seamlessly expand their programs to use
+more advanced features as their skills grow. Experienced developers
+can likewise enjoy writing small programs succinctly, without the need
+for constructs intended for programming in the large.
 
-This library feature was introduced as a preview
+This library feature is now finalised (JEP 512) with some minor
+changes from the last release. It was first introduced as a preview
 (http://openjdk.java.net/jeps/12) in OpenJDK 21 (JEP 445) under the
-name "Unnamed Classes and Instance Main Methods". It reaches a second
-preview in OpenJDK 22 (JEP 463) under a new name, due to the move away
-from unnamed classes to an implicitly declared name chosen by the host
-system.
+name "Unnamed Classes and Instance Main Methods". It reached a second
+preview in OpenJDK 22 (JEP 463) and a third in OpenJDK 23 (JEP 477)
+under the new name, "Implicitly Declared Classes and Instance Main
+Methods", due to the move away from unnamed classes to an implicitly
+declared name chosen by the host system. It had a fourth preview in
+OpenJDK 24 (JEP 495) with new terminology and a revised title ("Simple
+Source Files and Instance Main Methods"), but otherwise unchanged.
 
 Scoped Values
 =============
 https://openjdk.org/jeps/429
 https://openjdk.org/jeps/446
 https://openjdk.org/jeps/464
+https://openjdk.org/jeps/481
+https://openjdk.org/jeps/487
+https://openjdk.org/jeps/506
 
 Introduce scoped values, which enable the sharing of immutable data
 within and across threads. They are preferred to thread-local
 variables, especially when using large numbers of virtual threads.
 
-This API was first introduced in incubation
-(https://openjdk.java.net/jeps/11) in OpenJDK 20 (JEP 429). It became a
-preview feature (http://openjdk.java.net/jeps/12) in OpenJDK 21 (JEP
-446) and reaches its second preview in OpenJDK 22 (JEP 464).
+This API is now finalised (JEP 506). This API was first introduced in
+incubation (https://openjdk.java.net/jeps/11) in OpenJDK 20 (JEP
+429). It became a preview feature (http://openjdk.java.net/jeps/12) in
+OpenJDK 21 (JEP 446), had a second preview in OpenJDK 22 (JEP 464), a
+third in OpenJDK 23 (JEP 481) and a fourth in OpenJDK 24 (JEP 487).
+
+Key Derivation Function API
+===========================
+https://openjdk.org/jeps/478
+https://openjdk.org/jeps/510
+
+Introduce an API for Key Derivation Functions (KDFs), which are
+cryptographic algorithms for deriving additional keys from a secret
+key and other data.
+
+This API is now finalised (JEP 510). It was first introduced as a
+preview library feature (http://openjdk.java.net/jeps/12) in OpenJDK
+24 (JEP 478).
+
+Quantum-Resistant Module-Lattice-Based Key Encapsulation Mechanism
+==================================================================
+https://openjdk.org/jeps/496
+
+Enhance the security of Java applications by providing an
+implementation of the quantum-resistant Module-Lattice-Based
+Key-Encapsulation Mechanism (ML-KEM). Key encapsulation mechanisms
+(KEMs) are used to secure symmetric keys over insecure communication
+channels using public key cryptography. ML-KEM is designed to be
+secure against future quantum computing attacks. It has been
+standardized by the United States National Institute of Standards and
+Technology (NIST) in FIPS 203 [0].
+
+[0] https://csrc.nist.gov/pubs/fips/203/final
+
+Quantum-Resistant Module-Lattice-Based Digital Signature Algorithm
+==================================================================
+https://openjdk.org/jeps/497
+
+Enhance the security of Java applications by providing an
+implementation of the quantum-resistant Module-Lattice-Based Digital
+Signature Algorithm (ML-DSA). Digital signatures are used to detect
+unauthorized modifications to data and to authenticate the identity of
+signatories. ML-DSA is designed to be secure against future quantum
+computing attacks. It has been standardized by the United States
+National Institute of Standards and Technology (NIST) in FIPS 204 [0].
+
+[0] https://csrc.nist.gov/pubs/fips/204/final
+
+PEM Encodings of Cryptographic Objects
+======================================
+https://openjdk.org/jeps/470
+
+Introduce an API for encoding objects that represent cryptographic
+keys, certificates, and certificate revocation lists into the
+widely-used Privacy-Enhanced Mail (PEM) transport format, and for
+decoding from that format back into objects.
+
+This is a preview library feature (http://openjdk.java.net/jeps/12)
+introduced in OpenJDK 25 (JEP 470).
+
+Stable Values
+=============
+https://openjdk.org/jeps/502
+
+Introduce an API for stable values, which are objects that hold
+immutable data. Stable values are treated as constants by the JVM,
+enabling the same performance optimizations that are enabled by
+declaring a field final. Compared to final fields, however, stable
+values offer greater flexibility as to the timing of their
+initialization.
+
+This is a preview library feature (http://openjdk.java.net/jeps/12)
+introduced in OpenJDK 25 (JEP 502).
 
 Virtual Machine Enhancements
 ============================
@@ -188,6 +412,144 @@ https://openjdk.org/jeps/423
 Reduce latency by implementing region pinning in G1, so that garbage
 collection need not be disabled during Java Native Interface (JNI)
 critical regions.
+
+ZGC: Generational Mode by Default
+=================================
+https://openjdk.org/jeps/439
+https://openjdk.org/jeps/474
+
+Switch the default mode of the Z Garbage Collector (ZGC) to the
+generational mode. Deprecate the non-generational mode, with the
+intent to remove it in a future release.
+
+Late Barrier Expansion for G1
+=============================
+https://openjdk.org/jeps/475
+
+Simplify the implementation of the G1 garbage collector's barriers,
+which record information about application memory accesses, by
+shifting their expansion from early in the C2 JIT's compilation
+pipeline to later.
+
+Ahead-of-Time Class Loading & Linking
+=====================================
+https://openjdk.org/jeps/483
+https://openjdk.org/jeps/514
+
+Improve startup time by making the classes of an application instantly
+available, in a loaded and linked state, when the HotSpot Java Virtual
+Machine starts. Achieve this by monitoring the application during one
+run and storing the loaded and linked forms of all classes in a cache
+for use in subsequent runs. Lay a foundation for future improvements
+to both startup and warmup time.
+
+Using this feature requires a two stage process:
+
+1. Create the Ahead-of-Time cache from a training run of the
+application using the option `--XX:AOTCacheOutput=<cache name>` where
+`<cache name>` is the cache reference to use in later runs.
+
+2. When running the application in testing or production, use the
+option `-XX:AOTCache=<cache name>` to run the application with the
+cache generated in #2.
+
+Previously, in OpenJDK 24 (JEP 483), the training run and cache
+creation were handled by two separate steps:
+
+1. Populate the Ahead-of-Time configuration data with a training run
+of the application using the options `-XX:AOTMode=record
+-XX:AOTConfiguration=<config name>` where `<config name>` is the
+configuration reference to use in #2.
+
+2. Create the Ahead-of-Time cache using the options
+`-XX:AOTMode=create -XX:AOTConfiguration=<config name>
+-XX:AOTCache=<cache name>` where `<config name>` is the configuration
+reference from #1 and `<cache name>` is the cache reference to use in
+later runs.
+
+JEP 514 ("Ahead-of-Time Command-Line Ergonomics") in OpenJDK 25 adds
+the option `--XX:AOTCacheOutput` which performs both the above steps
+from a single command-line invocation using a temporary configuration
+file.  A new environment variable, `JDK_AOT_VM_OPTIONS`, can be used
+to pass options to the cache creation step without affecting the
+training run step.
+
+Ahead-of-Time Method Profiling
+==============================
+https://openjdk.org/jeps/515
+
+Improve warmup time by making method-execution profiles from a
+previous run of an application instantly available, when the HotSpot
+Java Virtual Machine starts. This will enable the JIT compiler to
+generate native code immediately upon application startup, rather than
+having to wait for profiles to be collected.
+
+Synchronize Virtual Threads without Pinning
+===========================================
+https://openjdk.org/jeps/491
+
+Improve the scalability of Java code that uses synchronized methods
+and statements by arranging for virtual threads that block in such
+constructs to release their underlying platform threads for use by
+other virtual threads. This will eliminate nearly all cases of virtual
+threads being pinned to platform threads, which severely restricts the
+number of virtual threads available to handle an application's
+workload.
+
+Compact Object Headers
+======================
+https://openjdk.org/jeps/450
+https://openjdk.org/jeps/519
+
+Reduce the size of object headers in the HotSpot JVM from between 96
+and 128 bits down to 64 bits on 64-bit architectures. This will reduce
+heap size, improve deployment density, and increase data locality.
+
+This is now a production feature in OpenJDK 25 (JEP 519) enabled using
+`-XX:+UseCompactObjectHeaders`. It was first introduced as an
+experimental feature (JEP 450) that also required the use of
+`-XX:+UnlockExperimentalVMOptions`.
+
+Generational Shenandoah
+=======================
+https://openjdk.org/jeps/404
+https://openjdk.org/jeps/521
+
+Enhance the Shenandoah garbage collector with experimental
+generational collection capabilities to improve sustainable
+throughput, load-spike resilience, and memory utilization.
+
+This is now a production feature in OpenJDK 25 (JEP 521) enabled using
+`-XX:ShenandoahGCMode=generational`. It was first introduced as an
+experimental feature (JEP 404) that also required the use of
+`-XX:+UnlockExperimentalVMOptions`.
+
+JFR Cooperative Sampling
+========================
+https://openjdk.org/jeps/518
+
+Improve the stability of the JDK Flight Recorder (JFR) when it
+asynchronously samples Java thread stacks. Achieve this by walking
+call stacks only at safepoints, while minimizing safepoint bias.
+
+JFR Method Timing & Tracing
+===========================
+https://openjdk.org/jeps/520
+
+Extend the JDK Flight Recorder (JFR) with facilities for method timing
+and tracing via bytecode instrumentation.
+
+JFR CPU-Time Profiling
+======================
+https://openjdk.org/jeps/509
+
+Enhance the JDK Flight Recorder (JFR) to capture more accurate
+CPU-time profiling information on Linux.
+
+This is an experimental feature so its JFR events are tagged with the
+`@Experimental` annotation. Unlike other experimental virtual machine
+features, it does not need to be explicitly enabled with
+`-XX:+UnlockExperimentalVMOptions`.
 
 Tools
 =====
@@ -201,3 +563,108 @@ supplied as multiple files of Java source code. This will make the
 transition from small programs to larger ones more gradual, enabling
 developers to choose whether and when to go to the trouble of
 configuring a build tool.
+
+Markdown Documentation Comments
+===============================
+https://openjdk.org/jeps/467
+
+Enable JavaDoc documentation comments to be written in Markdown rather
+than solely in a mixture of HTML and JavaDoc @-tags.
+
+Linking Run-Time Images without JMODs
+=====================================
+https://openjdk.org/jeps/493
+
+Reduce the size of the JDK by approximately 25% by enabling the jlink
+tool to create custom run-time images without using the JDK's JMOD
+files.
+
+This feature must be enabled when the JDK is built using the
+--enable-linkable-runtime option.  It will not be enabled by default,
+and some JDK vendors may choose not to enable it.
+
+DEPRECATIONS
+============
+
+Deprecate the Memory-Access Methods in sun.misc.Unsafe for Removal
+==================================================================
+https://openjdk.org/jeps/471
+
+Deprecate the memory-access methods in sun.misc.Unsafe for removal in
+a future release. These unsupported methods have been superseded by
+standard APIs, namely the VarHandle API (JEP 193, OpenJDK 9) and the
+Foreign Function & Memory API (JEP 454, OpenJDK 22). We strongly
+encourage library developers to migrate from sun.misc.Unsafe to
+supported replacements, so that applications can migrate smoothly to
+modern JDK releases.
+
+Warn upon Use of Memory-Access Methods in sun.misc.Unsafe
+=========================================================
+https://openjdk.org/jeps/498
+
+Issue a warning at run time on the first occasion that any
+memory-access method in sun.misc.Unsafe is invoked. All of these
+unsupported methods were terminally deprecated in JDK 23 (see JEP 471
+above). They have been superseded by standard APIs, namely the
+VarHandle API (JEP 193, OpenJDK 9) and the Foreign Function & Memory
+API (JEP 454, OpenJDK 22). We strongly encourage library developers to
+migrate from sun.misc.Unsafe to supported replacements, so that
+applications can migrate smoothly to modern JDK releases.
+
+Permanently Disable the Security Manager
+========================================
+https://openjdk.org/jeps/486
+
+The Security Manager has not been the primary means of securing
+client-side Java code for many years, it has rarely been used to
+secure server-side code, and it is costly to maintain. We therefore
+deprecated it for removal in OpenJDK 17 via JEP 411 (2021). As the
+next step toward removing the Security Manager, we will revise the
+Java Platform specification so that developers cannot enable it and
+other Platform classes do not refer to it. This change will have no
+impact on the vast majority of applications, libraries, and tools. We
+will remove the Security Manager API in a future release.
+
+REMOVALS
+========
+
+String Templates
+================
+https://openjdk.org/jeps/430
+https://openjdk.org/jeps/459
+https://openjdk.org/jeps/465
+
+This was a preview feature (http://openjdk.java.net/jeps/12)
+introduced in OpenJDK 21 (JEP 430) with a second preview in OpenJDK 22
+(JEP 459).  A third preview was proposed but ultimately withdrawn for
+OpenJDK 23 (JEP 465) and the feature is no longer present.  See [0]
+for further explanation.
+
+[0] https://mail.openjdk.org/pipermail/amber-spec-experts/2024-April/004106.html
+
+Remove the Windows & Linux 32-bit x86 Ports
+===========================================
+https://openjdk.org/jeps/449
+https://openjdk.org/jeps/479
+https://openjdk.org/jeps/501
+https://openjdk.org/jeps/503
+
+Remove the source code and build support for the Windows (JEP 479) &
+Linux (JEP 503) 32-bit x86 ports. The Windows port was deprecated for
+removal in JDK 21 by JEP 449 and the Linux port was deprecated for
+removal in JDK 24 by JEP 501. Both deprecations took place with the
+express intent to remove the ports in a future release.
+
+Following this removal of these 32-bit x86 ports, the
+architecture-agnostic Zero port is the only way to run Java programs
+on 32-bit x86 processors.
+
+ZGC: Remove the Non-Generational Mode
+=====================================
+https://openjdk.org/jeps/439
+https://openjdk.org/jeps/474
+https://openjdk.org/jeps/490
+
+Remove the non-generational mode of the Z Garbage Collector (ZGC),
+keeping the generational mode as the default for ZGC (see JEP 439 &
+474).

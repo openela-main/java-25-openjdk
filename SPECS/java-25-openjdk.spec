@@ -142,6 +142,8 @@
 %global svml_arches x86_64
 # Set of architectures for which java has intrinsics for Arrays.sort (libsimdsort.so)
 %global simdsort_arches x86_64
+# Set of architectures for which SLEEF is used for vector math operations
+%global sleef_arches %{aarch64} riscv64
 # Set of architectures where we verify backtraces with gdb
 %global gdb_arches %{jit_arches} %{zero_arches}
 # Architecture on which we run Java only tests
@@ -312,10 +314,9 @@
 %endif
 
 # New Version-String scheme-style defines
-%global featurever 22
-%global fakefeaturever 25
+%global featurever 25
 %global interimver 0
-%global updatever 2
+%global updatever 1
 %global patchver 0
 # We don't add any LTS designator for STS packages (Fedora and EPEL).
 # We need to explicitly exclude EPEL as it would have the %%{rhel} macro defined.
@@ -356,8 +357,7 @@
 %global crypto_policy_active false
 # Define JDK versions
 %global newjavaver %{featurever}.%{interimver}.%{updatever}.%{patchver}
-# Force 25 until we are actually ready to build that JDK version
-%global javaver         %{fakefeaturever}
+%global javaver         %{featurever}
 # Strip up to 6 trailing zeros in newjavaver, as the JDK does, to get the correct version used in filenames
 %global filever %(svn=%{newjavaver}; for i in 1 2 3 4 5 6 ; do svn=${svn%%.0} ; done; echo ${svn})
 # The tag used to create the OpenJDK tarball
@@ -375,17 +375,24 @@
 %global origin_nice     OpenJDK
 %global top_level_dir_name   %{vcstag}
 %global top_level_dir_name_backup %{top_level_dir_name}-backup
-%global buildver        9
-%global rpmrelease      1
+%global buildver        8
+%global rpmrelease      2
 # Settings used by the portable build
-%global portablerelease 2
+%global portablerelease 1
 # Portable suffix differs between RHEL and CentOS
 %if 0%{?centos} == 0
-%global portablesuffix %{?pkgos:el7_9}%{!?pkgos:el8}
+%global portablerhel %{?pkgos:7_9}%{!?pkgos:8}
 %else
-%global portablesuffix el9
+%global portablerhel 9
 %endif
 %global portablebuilddir /builddir/build/BUILD
+%global portablesuffix el%{portablerhel}
+# Check if pandoc was available to generate docs (including man pages)
+%if 0%{?portablerhel} == 8
+%global pandoc_available 1
+%else
+%global pandoc_available 0
+%endif
 
 # Priority must be 8 digits in total; up to openjdk 1.8, we were using 18..... so when we moved to 11, we had to add another digit
 %if %is_system_jdk
@@ -420,13 +427,13 @@
 %endif
 
 # parametrized macros are order-sensitive
-%global compatiblename  java-%{fakefeaturever}-%{origin}
+%global compatiblename  java-%{featurever}-%{origin}
 %global fullversion     %{compatiblename}-%{version}-%{release}
 # images directories from upstream build
 %global jdkimage                jdk
 %global static_libs_image       static-libs
 # output dir stub
-%define installoutputdir() %{expand:install/jdk%{fakefeaturever}.install%{?1}}
+%define installoutputdir() %{expand:install/jdk%{featurever}.install%{?1}}
 # we can copy the javadoc to not arched dir, or make it not noarch
 %define uniquejavadocdir() %{expand:%{compatiblename}%{?1}}
 # main id and dir of this jdk
@@ -436,7 +443,7 @@
 # fix for https://bugzilla.redhat.com/show_bug.cgi?id=1111349
 #         https://bugzilla.redhat.com/show_bug.cgi?id=1590796#c14
 #         https://bugzilla.redhat.com/show_bug.cgi?id=1655938
-%global _privatelibs libsplashscreen[.]so.*|libawt_xawt[.]so.*|libjli[.]so.*|libattach[.]so.*|libawt[.]so.*|libextnet[.]so.*|libawt_headless[.]so.*|libdt_socket[.]so.*|libfontmanager[.]so.*|libinstrument[.]so.*|libj2gss[.]so.*|libj2pcsc[.]so.*|libj2pkcs11[.]so.*|libjaas[.]so.*|libjavajpeg[.]so.*|libjdwp[.]so.*|libjimage[.]so.*|libjsound[.]so.*|liblcms[.]so.*|lible[.]so.*|libmanagement[.]so.*|libmanagement_agent[.]so.*|libmanagement_ext[.]so.*|libmlib_image[.]so.*|libnet[.]so.*|libnio[.]so.*|libprefs[.]so.*|librmi[.]so.*|libsaproc[.]so.*|libsctp[.]so.*|libzip[.]so.*%{freetype_lib}
+%global _privatelibs libsplashscreen[.]so.*|libawt_xawt[.]so.*|libjli[.]so.*|libattach[.]so.*|libawt[.]so.*|libextnet[.]so.*|libawt_headless[.]so.*|libdt_socket[.]so.*|libfontmanager[.]so.*|libinstrument[.]so.*|libj2gss[.]so.*|libj2pcsc[.]so.*|libj2pkcs11[.]so.*|libjaas[.]so.*|libjavajpeg[.]so.*|libjdwp[.]so.*|libjimage[.]so.*|libjsound[.]so.*|libjsvml[.]so.*|liblcms[.]so.*|libmanagement[.]so.*|libmanagement_agent[.]so.*|libmanagement_ext[.]so.*|libmlib_image[.]so.*|libnet[.]so.*|libnio[.]so.*|libprefs[.]so.*|librmi[.]so.*|libsaproc[.]so.*|libsctp[.]so.*|libsimdsort[.]so.*|libsleef[.]so.*|libsyslookup[.]so.*|libzip[.]so.*%{freetype_lib}
 %global _publiclibs libjawt[.]so.*|libjava[.]so.*|libjvm[.]so.*|libverify[.]so.*|libjsig[.]so.*
 %if %is_system_jdk
 %global __provides_exclude ^(%{_privatelibs})$
@@ -523,12 +530,20 @@ alternatives --install %{_bindir}/java java %{jrebindir -- %{?1}}/java %{priorit
   --slave %{_bindir}/%{alt_java_name} %{alt_java_name} %{jrebindir -- %{?1}}/%{alt_java_name} \\
   --slave %{_bindir}/jcmd jcmd %{sdkbindir -- %{?1}}/jcmd \\
   --slave %{_bindir}/keytool keytool %{jrebindir -- %{?1}}/keytool \\
-  --slave %{_bindir}/rmiregistry rmiregistry %{jrebindir -- %{?1}}/rmiregistry \\
-  --slave %{_mandir}/man1/java.1%{man_comp} java.1%{man_comp} %{_mandir}/man1/java-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/%{alt_java_name}.1%{man_comp} %{alt_java_name}.1%{man_comp} %{_mandir}/man1/%{alt_java_name}-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jcmd.1%{man_comp} jcmd.1%{man_comp} %{_mandir}/man1/jcmd-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/keytool.1%{man_comp} keytool.1%{man_comp} %{_mandir}/man1/keytool-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/rmiregistry.1%{man_comp} rmiregistry.1%{man_comp} %{_mandir}/man1/rmiregistry-%{uniquesuffix -- %{?1}}.1%{man_comp}
+  --slave %{_bindir}/rmiregistry rmiregistry %{jrebindir -- %{?1}}/rmiregistry
+%if %{pandoc_available}
+alternatives --add-slave java %{jrebindir -- %{?1}}/java \\
+  %{_mandir}/man1/java.1%{man_comp} java.1%{man_comp} %{_mandir}/man1/java-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave java %{jrebindir -- %{?1}}/java \\
+  %{_mandir}/man1/%{alt_java_name}.1%{man_comp} %{alt_java_name}.1%{man_comp} %{_mandir}/man1/%{alt_java_name}-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave java %{jrebindir -- %{?1}}/java \\
+  %{_mandir}/man1/jcmd.1%{man_comp} jcmd.1%{man_comp} %{_mandir}/man1/jcmd-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave java %{jrebindir -- %{?1}}/java \\
+  %{_mandir}/man1/keytool.1%{man_comp} keytool.1%{man_comp} %{_mandir}/man1/keytool-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave java %{jrebindir -- %{?1}}/java \\
+  %{_mandir}/man1/rmiregistry.1%{man_comp} rmiregistry.1%{man_comp} %{_mandir}/man1/rmiregistry-%{uniquesuffix -- %{?1}}.1%{man_comp}
+%endif
+  
 alternatives --install %{_jvmdir}/jre-%{origin} jre_%{origin} %{_jvmdir}/%{sdkdir -- %{?1}} %{priority_for -- %{?1}}
 alternatives --install %{_jvmdir}/jre-%{javaver} jre_%{javaver} %{_jvmdir}/%{sdkdir -- %{?1}} %{priority_for -- %{?1}}
 alternatives --install %{_jvmdir}/jre-%{javaver}-%{origin} jre_%{javaver}_%{origin} %{_jvmdir}/%{sdkdir -- %{?1}} %{priority_for -- %{?1}}
@@ -596,13 +611,6 @@ if [ "x$debug"  == "xtrue" ] ; then
 fi
 alternatives --install %{_bindir}/javac javac %{sdkbindir -- %{?1}}/javac %{priority_for -- %{?1}} \\
   --slave %{_jvmdir}/java java_sdk %{_jvmdir}/%{sdkdir -- %{?1}} \\
-  --slave %{_bindir}/jlink jlink %{sdkbindir -- %{?1}}/jlink \\
-  --slave %{_bindir}/jmod jmod %{sdkbindir -- %{?1}}/jmod \\
-%ifarch %{sa_arches}
-%ifnarch %{zero_arches}
-  --slave %{_bindir}/jhsdb jhsdb %{sdkbindir -- %{?1}}/jhsdb \\
-%endif
-%endif
   --slave %{_bindir}/jar jar %{sdkbindir -- %{?1}}/jar \\
   --slave %{_bindir}/jarsigner jarsigner %{sdkbindir -- %{?1}}/jarsigner \\
   --slave %{_bindir}/javadoc javadoc %{sdkbindir -- %{?1}}/javadoc \\
@@ -612,9 +620,17 @@ alternatives --install %{_bindir}/javac javac %{sdkbindir -- %{?1}}/javac %{prio
   --slave %{_bindir}/jdeps jdeps %{sdkbindir -- %{?1}}/jdeps \\
   --slave %{_bindir}/jdeprscan jdeprscan %{sdkbindir -- %{?1}}/jdeprscan \\
   --slave %{_bindir}/jfr jfr %{sdkbindir -- %{?1}}/jfr \\
+%ifarch %{sa_arches}
+%ifnarch %{zero_arches}
+  --slave %{_bindir}/jhsdb jhsdb %{sdkbindir -- %{?1}}/jhsdb \\
+%endif
+%endif
   --slave %{_bindir}/jimage jimage %{sdkbindir -- %{?1}}/jimage \\
   --slave %{_bindir}/jinfo jinfo %{sdkbindir -- %{?1}}/jinfo \\
+  --slave %{_bindir}/jlink jlink %{sdkbindir -- %{?1}}/jlink \\
   --slave %{_bindir}/jmap jmap %{sdkbindir -- %{?1}}/jmap \\
+  --slave %{_bindir}/jmod jmod %{sdkbindir -- %{?1}}/jmod \\
+  --slave %{_bindir}/jnativescan jnativescan %{sdkbindir -- %{?1}}/jnativescan \\
   --slave %{_bindir}/jps jps %{sdkbindir -- %{?1}}/jps \\
   --slave %{_bindir}/jpackage jpackage %{sdkbindir -- %{?1}}/jpackage \\
   --slave %{_bindir}/jrunscript jrunscript %{sdkbindir -- %{?1}}/jrunscript \\
@@ -623,25 +639,63 @@ alternatives --install %{_bindir}/javac javac %{sdkbindir -- %{?1}}/javac %{prio
   --slave %{_bindir}/jstat jstat %{sdkbindir -- %{?1}}/jstat \\
   --slave %{_bindir}/jstatd jstatd %{sdkbindir -- %{?1}}/jstatd \\
   --slave %{_bindir}/jwebserver jwebserver %{sdkbindir -- %{?1}}/jwebserver \\
-  --slave %{_bindir}/serialver serialver %{sdkbindir -- %{?1}}/serialver \\
-  --slave %{_mandir}/man1/jar.1%{man_comp} jar.1%{man_comp} %{_mandir}/man1/jar-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jarsigner.1%{man_comp} jarsigner.1%{man_comp} %{_mandir}/man1/jarsigner-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/javac.1%{man_comp} javac.1%{man_comp} %{_mandir}/man1/javac-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/javadoc.1%{man_comp} javadoc.1%{man_comp} %{_mandir}/man1/javadoc-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/javap.1%{man_comp} javap.1%{man_comp} %{_mandir}/man1/javap-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jconsole.1%{man_comp} jconsole.1%{man_comp} %{_mandir}/man1/jconsole-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jdb.1%{man_comp} jdb.1%{man_comp} %{_mandir}/man1/jdb-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jdeps.1%{man_comp} jdeps.1%{man_comp} %{_mandir}/man1/jdeps-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jinfo.1%{man_comp} jinfo.1%{man_comp} %{_mandir}/man1/jinfo-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jmap.1%{man_comp} jmap.1%{man_comp} %{_mandir}/man1/jmap-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jps.1%{man_comp} jps.1%{man_comp} %{_mandir}/man1/jps-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jpackage.1%{man_comp} jpackage.1%{man_comp} %{_mandir}/man1/jpackage-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jrunscript.1%{man_comp} jrunscript.1%{man_comp} %{_mandir}/man1/jrunscript-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jstack.1%{man_comp} jstack.1%{man_comp} %{_mandir}/man1/jstack-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jstat.1%{man_comp} jstat.1%{man_comp} %{_mandir}/man1/jstat-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jwebserver.1%{man_comp} jwebserver.1%{man_comp} %{_mandir}/man1/jwebserver-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/jstatd.1%{man_comp} jstatd.1%{man_comp} %{_mandir}/man1/jstatd-%{uniquesuffix -- %{?1}}.1%{man_comp} \\
-  --slave %{_mandir}/man1/serialver.1%{man_comp} serialver.1%{man_comp} %{_mandir}/man1/serialver-%{uniquesuffix -- %{?1}}.1%{man_comp}
+  --slave %{_bindir}/serialver serialver %{sdkbindir -- %{?1}}/serialver
+%if %{pandoc_available}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jar.1%{man_comp} jar.1%{man_comp} %{_mandir}/man1/jar-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jarsigner.1%{man_comp} jarsigner.1%{man_comp} %{_mandir}/man1/jarsigner-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/javac.1%{man_comp} javac.1%{man_comp} %{_mandir}/man1/javac-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/javadoc.1%{man_comp} javadoc.1%{man_comp} %{_mandir}/man1/javadoc-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/javap.1%{man_comp} javap.1%{man_comp} %{_mandir}/man1/javap-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jconsole.1%{man_comp} jconsole.1%{man_comp} %{_mandir}/man1/jconsole-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jdb.1%{man_comp} jdb.1%{man_comp} %{_mandir}/man1/jdb-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jdeps.1%{man_comp} jdeps.1%{man_comp} %{_mandir}/man1/jdeps-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jdeprscan.1%{man_comp} jdeprscan.1%{man_comp} %{_mandir}/man1/jdeprscan-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jfr.1%{man_comp} jfr.1%{man_comp} %{_mandir}/man1/jfr-%{uniquesuffix -- %{?1}}.1%{man_comp}
+%ifarch %{sa_arches}
+%ifnarch %{zero_arches}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jhsdb.1%{man_comp} jhsdb.1%{man_comp} %{_mandir}/man1/jhsdb-%{uniquesuffix -- %{?1}}.1%{man_comp}
+%endif
+%endif
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jimage.1%{man_comp} jimage.1%{man_comp} %{_mandir}/man1/jimage-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jinfo.1%{man_comp} jinfo.1%{man_comp} %{_mandir}/man1/jinfo-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jlink.1%{man_comp} jlink.1%{man_comp} %{_mandir}/man1/jlink-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jmap.1%{man_comp} jmap.1%{man_comp} %{_mandir}/man1/jmap-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jmod.1%{man_comp} jmod.1%{man_comp} %{_mandir}/man1/jmod-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jnativescan.1%{man_comp} jnativescan.1%{man_comp} %{_mandir}/man1/jnativescan-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jps.1%{man_comp} jps.1%{man_comp} %{_mandir}/man1/jps-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jpackage.1%{man_comp} jpackage.1%{man_comp} %{_mandir}/man1/jpackage-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jrunscript.1%{man_comp} jrunscript.1%{man_comp} %{_mandir}/man1/jrunscript-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jstack.1%{man_comp} jstack.1%{man_comp} %{_mandir}/man1/jstack-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jstat.1%{man_comp} jstat.1%{man_comp} %{_mandir}/man1/jstat-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jstatd.1%{man_comp} jstatd.1%{man_comp} %{_mandir}/man1/jstatd-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/jwebserver.1%{man_comp} jwebserver.1%{man_comp} %{_mandir}/man1/jwebserver-%{uniquesuffix -- %{?1}}.1%{man_comp}
+alternatives --add-slave javac %{sdkbindir -- %{?1}}/javac \\
+  %{_mandir}/man1/serialver.1%{man_comp} serialver.1%{man_comp} %{_mandir}/man1/serialver-%{uniquesuffix -- %{?1}}.1%{man_comp}
+%endif
 alternatives --install %{_jvmdir}/java-%{origin} java_sdk_%{origin} %{_jvmdir}/%{sdkdir -- %{?1}} %{priority_for -- %{?1}}
 alternatives --install %{_jvmdir}/java-%{javaver} java_sdk_%{javaver} %{_jvmdir}/%{sdkdir -- %{?1}} %{priority_for -- %{?1}}
 }
@@ -734,7 +788,7 @@ fi
 %license %{_jvmdir}/%{sdkdir -- %{?1}}/legal
 %doc %{_defaultdocdir}/%{uniquejavadocdir -- %{?1}}/NEWS
 %doc %{_defaultdocdir}/%{uniquejavadocdir -- %{?1}}/README.md
-%doc %{_defaultdocdir}/%{uniquejavadocdir -- %{?1}}/java-%{fakefeaturever}-openjdk-portable.specfile
+%doc %{_defaultdocdir}/%{uniquejavadocdir -- %{?1}}/java-%{featurever}-openjdk-portable.specfile
 %doc %{_defaultdocdir}/%{uniquejavadocdir -- %{?1}}/openjdk-devkit.specfile
 %doc %{_defaultdocdir}/%{uniquejavadocdir -- %{?1}}/0*.patch
 %dir %{_defaultdocdir}/%{uniquejavadocdir -- %{?1}}
@@ -785,7 +839,6 @@ fi
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/libjsvml.so
 %endif
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/liblcms.so
-%{_jvmdir}/%{sdkdir -- %{?1}}/lib/lible.so
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/libmanagement.so
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/libmanagement_agent.so
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/libmanagement_ext.so
@@ -804,23 +857,30 @@ fi
 %ifarch %{simdsort_arches}
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/libsimdsort.so
 %endif
+%ifarch %{sleef_arches}
+%{_jvmdir}/%{sdkdir -- %{?1}}/lib/libsleef.so
+%endif
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/libsyslookup.so
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/libverify.so
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/libzip.so
 %dir %{_jvmdir}/%{sdkdir -- %{?1}}/lib/jfr
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/jfr/default.jfc
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/jfr/profile.jfc
+%if %{pandoc_available}
 %{_mandir}/man1/java-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/%{alt_java_name}-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/jcmd-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/keytool-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/rmiregistry-%{uniquesuffix -- %{?1}}.1*
+%endif
 %dir %{_jvmdir}/%{sdkdir -- %{?1}}/lib/%{vm_variant}
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/%{vm_variant}/*.so
 %ifarch %{share_arches}
 %attr(444, root, root) %{_jvmdir}/%{sdkdir -- %{?1}}/lib/%{vm_variant}/classes.jsa
+%attr(444, root, root) %{_jvmdir}/%{sdkdir -- %{?1}}/lib/%{vm_variant}/classes_coh.jsa
 %ifnarch %{ix86} %{arm32}
 %attr(444, root, root) %{_jvmdir}/%{sdkdir -- %{?1}}/lib/%{vm_variant}/classes_nocoops.jsa
+%attr(444, root, root) %{_jvmdir}/%{sdkdir -- %{?1}}/lib/%{vm_variant}/classes_nocoops_coh.jsa
 %endif
 %endif
 %dir %{etcjavasubdir}
@@ -835,7 +895,6 @@ fi
 %dir %{etcjavadir -- %{?1}}/conf/security/policy
 %dir %{etcjavadir -- %{?1}}/conf/security/policy/limited
 %dir %{etcjavadir -- %{?1}}/conf/security/policy/unlimited
-%config(noreplace) %{etcjavadir -- %{?1}}/lib/security/default.policy
 %config(noreplace) %{etcjavadir -- %{?1}}/lib/security/blocked.certs
 %config(noreplace) %{etcjavadir -- %{?1}}/lib/security/public_suffix_list.dat
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/security/policy/limited/exempt_local.policy
@@ -844,7 +903,6 @@ fi
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/security/policy/unlimited/default_local.policy
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/security/policy/unlimited/default_US_export.policy
  %{etcjavadir -- %{?1}}/conf/security/policy/README.txt
-%config(noreplace) %{etcjavadir -- %{?1}}/conf/security/java.policy
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/security/java.security
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/management/jmxremote.access
 # This is a config template, thus not config-noreplace
@@ -852,6 +910,7 @@ fi
 %config  %{etcjavadir -- %{?1}}/conf/sdp/sdp.conf.template
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/management/management.properties
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/jaxp.properties
+%config(noreplace) %{etcjavadir -- %{?1}}/conf/jaxp-strict.properties.template
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/logging.properties
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/net.properties
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/sound.properties
@@ -893,13 +952,16 @@ fi
 %ifarch %{sa_arches}
 %ifnarch %{zero_arches}
 %{_jvmdir}/%{sdkdir -- %{?1}}/bin/jhsdb
+%if %{pandoc_available}
 %{_mandir}/man1/jhsdb-%{uniquesuffix -- %{?1}}.1*
+%endif
 %endif
 %endif
 %{_jvmdir}/%{sdkdir -- %{?1}}/bin/jinfo
 %{_jvmdir}/%{sdkdir -- %{?1}}/bin/jlink
 %{_jvmdir}/%{sdkdir -- %{?1}}/bin/jmap
 %{_jvmdir}/%{sdkdir -- %{?1}}/bin/jmod
+%{_jvmdir}/%{sdkdir -- %{?1}}/bin/jnativescan
 %{_jvmdir}/%{sdkdir -- %{?1}}/bin/jps
 %{_jvmdir}/%{sdkdir -- %{?1}}/bin/jpackage
 %{_jvmdir}/%{sdkdir -- %{?1}}/bin/jrunscript
@@ -911,10 +973,14 @@ fi
 %{_jvmdir}/%{sdkdir -- %{?1}}/bin/serialver
 %{_jvmdir}/%{sdkdir -- %{?1}}/include
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/ct.sym
+
 %if %{with_systemtap}
 %{_jvmdir}/%{sdkdir -- %{?1}}/tapset
 %endif
+
 %{_datadir}/applications/*jconsole%{?1}.desktop
+
+%if %{pandoc_available}
 %{_mandir}/man1/jar-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/jarsigner-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/javac-%{uniquesuffix -- %{?1}}.1*
@@ -929,6 +995,7 @@ fi
 %{_mandir}/man1/jlink-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/jmap-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/jmod-%{uniquesuffix -- %{?1}}.1*
+%{_mandir}/man1/jnativescan-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/jps-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/jpackage-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/jrunscript-%{uniquesuffix -- %{?1}}.1*
@@ -938,6 +1005,7 @@ fi
 %{_mandir}/man1/jstatd-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/jwebserver-%{uniquesuffix -- %{?1}}.1*
 %{_mandir}/man1/serialver-%{uniquesuffix -- %{?1}}.1*
+%endif
 
 %if %{with_systemtap}
 %dir %{tapsetroot}
@@ -945,12 +1013,11 @@ fi
 %dir %{tapsetdir}
 %{tapsetdir}/*%{_arch}%{?1}.stp
 %endif
+
 %if %is_system_jdk
 %if %{is_release_build -- %{?1}}
 %ghost %{_bindir}/javac
 %ghost %{_jvmdir}/java
-%ghost %{_bindir}/jlink
-%ghost %{_bindir}/jmod
 %ghost %{_bindir}/jhsdb
 %ghost %{_bindir}/jar
 %ghost %{_bindir}/jarsigner
@@ -963,7 +1030,10 @@ fi
 %ghost %{_bindir}/jfr
 %ghost %{_bindir}/jimage
 %ghost %{_bindir}/jinfo
+%ghost %{_bindir}/jlink
 %ghost %{_bindir}/jmap
+%ghost %{_bindir}/jmod
+%ghost %{_bindir}/jnativescan
 %ghost %{_bindir}/jps
 %ghost %{_bindir}/jpackage
 %ghost %{_bindir}/jrunscript
@@ -1185,7 +1255,7 @@ Provides: java-%{origin}-src%{?1} = %{epoch}:%{version}-%{release}
 # Prevent brp-java-repack-jars from being run
 %global __jar_repack 0
 # Define the root name of the portable packages
-%global pkgnameroot java-%{fakefeaturever}-%{origin}-portable%{?pkgos:-%{pkgos}}
+%global pkgnameroot java-%{featurever}-%{origin}-portable%{?pkgos:-%{pkgos}}
 
 # Define the architectures on which we build
 ExclusiveArch: %{aarch64} %{ppc64le} s390x x86_64 riscv64
@@ -1206,7 +1276,7 @@ Release: %{?eaprefix}%{rpmrelease}%{?extraver}%{?dist}
 # provides >= 1.6.0 must specify the epoch, "java >= 1:1.6.0".
 
 Epoch:   1
-Summary: %{origin_nice} %{fakefeaturever} Runtime Environment
+Summary: %{origin_nice} %{featurever} Runtime Environment
 # Groups are only used up to RHEL 8 and on Fedora versions prior to F30
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
@@ -1230,7 +1300,7 @@ License:  ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv
 URL:      http://openjdk.java.net/
 
 # The source tarball, generated using generate_source_tarball.sh
-Source0: https://openjdk-sources.osci.io/openjdk%{fakefeaturever}/open%{vcstag}%{ea_designator_zip}.tar.xz
+Source0: https://openjdk-sources.osci.io/openjdk%{featurever}/open%{vcstag}%{ea_designator_zip}.tar.xz
 
 # Use 'icedtea_sync.sh' to update the following
 # They are based on code contained in the IcedTea project (6.x).
@@ -1263,7 +1333,7 @@ Source18: TestTranslations.java
 
 # Include portable spec and instructions on how to rebuild
 Source19: README.md
-Source20: java-%{fakefeaturever}-openjdk-portable.specfile
+Source20: java-%{featurever}-openjdk-portable.specfile
 Source21: NEWS
 Source22: openjdk-devkit.specfile
 # Devkit patches; see https://github.com/rh-openjdk/jdk/tree/devkit
@@ -1444,43 +1514,48 @@ Provides: bundled(libpng) = 1.6.47
 # Version in src/java.base/share/native/libzip/zlib/zlib.h
 Provides: bundled(zlib) = 1.3.1
 %endif
+%ifarch %{sleef_arches}
+# SLEEF is always bundled
+# Version in src/jdk.incubator.vector/linux/native/libsleef/generated/sleefinline_advsimd.h
+Provides: bundled(sleef) = 3.6.1
+%endif
 
 # this is always built, also during debug-only build
 # when it is built in debug-only this package is just placeholder
 %{java_rpo %{nil}}
 
 %description
-The %{origin_nice} %{fakefeaturever} runtime environment.
+The %{origin_nice} %{featurever} runtime environment.
 
 %if %{include_debug_build}
 %package slowdebug
-Summary: %{origin_nice} %{fakefeaturever} Runtime Environment %{debug_on}
+Summary: %{origin_nice} %{featurever} Runtime Environment %{debug_on}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
 
 %{java_rpo -- %{debug_suffix_unquoted}}
 %description slowdebug
-The %{origin_nice} %{fakefeaturever} runtime environment.
+The %{origin_nice} %{featurever} runtime environment.
 %{debug_warning}
 %endif
 
 %if %{include_fastdebug_build}
 %package fastdebug
-Summary: %{origin_nice} %{fakefeaturever} Runtime Environment %{fastdebug_on}
+Summary: %{origin_nice} %{featurever} Runtime Environment %{fastdebug_on}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
 
 %{java_rpo -- %{fastdebug_suffix_unquoted}}
 %description fastdebug
-The %{origin_nice} %{fakefeaturever} runtime environment.
+The %{origin_nice} %{featurever} runtime environment.
 %{fastdebug_warning}
 %endif
 
 %if %{include_normal_build}
 %package headless
-Summary: %{origin_nice} %{fakefeaturever} Headless Runtime Environment
+Summary: %{origin_nice} %{featurever} Headless Runtime Environment
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1488,12 +1563,12 @@ Group:   Development/Languages
 %{java_headless_rpo %{nil}}
 
 %description headless
-The %{origin_nice} %{fakefeaturever} runtime environment without audio and video support.
+The %{origin_nice} %{featurever} runtime environment without audio and video support.
 %endif
 
 %if %{include_debug_build}
 %package headless-slowdebug
-Summary: %{origin_nice} %{fakefeaturever} Runtime Environment %{debug_on}
+Summary: %{origin_nice} %{featurever} Runtime Environment %{debug_on}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1501,13 +1576,13 @@ Group:   Development/Languages
 %{java_headless_rpo -- %{debug_suffix_unquoted}}
 
 %description headless-slowdebug
-The %{origin_nice} %{fakefeaturever} runtime environment without audio and video support.
+The %{origin_nice} %{featurever} runtime environment without audio and video support.
 %{debug_warning}
 %endif
 
 %if %{include_fastdebug_build}
 %package headless-fastdebug
-Summary: %{origin_nice} %{fakefeaturever} Runtime Environment %{fastdebug_on}
+Summary: %{origin_nice} %{featurever} Runtime Environment %{fastdebug_on}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1515,13 +1590,13 @@ Group:   Development/Languages
 %{java_headless_rpo -- %{fastdebug_suffix_unquoted}}
 
 %description headless-fastdebug
-The %{origin_nice} %{fakefeaturever} runtime environment without audio and video support.
+The %{origin_nice} %{featurever} runtime environment without audio and video support.
 %{fastdebug_warning}
 %endif
 
 %if %{include_normal_build}
 %package devel
-Summary: %{origin_nice} %{fakefeaturever} Development Environment
+Summary: %{origin_nice} %{featurever} Development Environment
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1529,12 +1604,12 @@ Group:   Development/Languages
 %{java_devel_rpo %{nil}}
 
 %description devel
-The %{origin_nice} %{fakefeaturever} development tools.
+The %{origin_nice} %{featurever} development tools.
 %endif
 
 %if %{include_debug_build}
 %package devel-slowdebug
-Summary: %{origin_nice} %{fakefeaturever} Development Environment %{debug_on}
+Summary: %{origin_nice} %{featurever} Development Environment %{debug_on}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1542,13 +1617,13 @@ Group:   Development/Languages
 %{java_devel_rpo -- %{debug_suffix_unquoted}}
 
 %description devel-slowdebug
-The %{origin_nice} %{fakefeaturever} development tools.
+The %{origin_nice} %{featurever} development tools.
 %{debug_warning}
 %endif
 
 %if %{include_fastdebug_build}
 %package devel-fastdebug
-Summary: %{origin_nice} %{fakefeaturever} Development Environment %{fastdebug_on}
+Summary: %{origin_nice} %{featurever} Development Environment %{fastdebug_on}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Tools
 %endif
@@ -1556,7 +1631,7 @@ Group:   Development/Tools
 %{java_devel_rpo -- %{fastdebug_suffix_unquoted}}
 
 %description devel-fastdebug
-The %{origin_nice} %{fakefeaturever} development tools              .
+The %{origin_nice} %{featurever} development tools              .
 %{fastdebug_warning}
 %endif
 
@@ -1564,33 +1639,33 @@ The %{origin_nice} %{fakefeaturever} development tools              .
 
 %if %{include_normal_build}
 %package static-libs
-Summary: %{origin_nice} %{fakefeaturever} libraries for static linking
+Summary: %{origin_nice} %{featurever} libraries for static linking
 
 %{java_static_libs_rpo %{nil}}
 
 %description static-libs
-The %{origin_nice} %{fakefeaturever} libraries for static linking.
+The %{origin_nice} %{featurever} libraries for static linking.
 %endif
 
 %if %{include_debug_build}
 %package static-libs-slowdebug
-Summary: %{origin_nice} %{fakefeaturever} libraries for static linking %{debug_on}
+Summary: %{origin_nice} %{featurever} libraries for static linking %{debug_on}
 
 %{java_static_libs_rpo -- %{debug_suffix_unquoted}}
 
 %description static-libs-slowdebug
-The %{origin_nice} %{fakefeaturever} libraries for static linking.
+The %{origin_nice} %{featurever} libraries for static linking.
 %{debug_warning}
 %endif
 
 %if %{include_fastdebug_build}
 %package static-libs-fastdebug
-Summary: %{origin_nice} %{fakefeaturever} libraries for static linking %{fastdebug_on}
+Summary: %{origin_nice} %{featurever} libraries for static linking %{fastdebug_on}
 
 %{java_static_libs_rpo -- %{fastdebug_suffix_unquoted}}
 
 %description static-libs-fastdebug
-The %{origin_nice} %{fakefeaturever} libraries for static linking.
+The %{origin_nice} %{featurever} libraries for static linking.
 %{fastdebug_warning}
 %endif
 
@@ -1599,7 +1674,7 @@ The %{origin_nice} %{fakefeaturever} libraries for static linking.
 
 %if %{include_normal_build}
 %package jmods
-Summary: JMods for %{origin_nice} %{fakefeaturever}
+Summary: JMods for %{origin_nice} %{featurever}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1607,12 +1682,12 @@ Group:   Development/Languages
 %{java_jmods_rpo %{nil}}
 
 %description jmods
-The JMods for %{origin_nice} %{fakefeaturever}.
+The JMods for %{origin_nice} %{featurever}.
 %endif
 
 %if %{include_debug_build}
 %package jmods-slowdebug
-Summary: JMods for %{origin_nice} %{fakefeaturever} %{debug_on}
+Summary: JMods for %{origin_nice} %{featurever} %{debug_on}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1620,13 +1695,13 @@ Group:   Development/Languages
 %{java_jmods_rpo -- %{debug_suffix_unquoted}}
 
 %description jmods-slowdebug
-The JMods for %{origin_nice} %{fakefeaturever}.
+The JMods for %{origin_nice} %{featurever}.
 %{debug_warning}
 %endif
 
 %if %{include_fastdebug_build}
 %package jmods-fastdebug
-Summary: JMods for %{origin_nice} %{fakefeaturever} %{fastdebug_on}
+Summary: JMods for %{origin_nice} %{featurever} %{fastdebug_on}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Tools
 %endif
@@ -1634,13 +1709,13 @@ Group:   Development/Tools
 %{java_jmods_rpo -- %{fastdebug_suffix_unquoted}}
 
 %description jmods-fastdebug
-The JMods for %{origin_nice} %{fakefeaturever}.
+The JMods for %{origin_nice} %{featurever}.
 %{fastdebug_warning}
 %endif
 
 %if %{include_normal_build}
 %package demo
-Summary: %{origin_nice} %{fakefeaturever} Demos
+Summary: %{origin_nice} %{featurever} Demos
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1648,12 +1723,12 @@ Group:   Development/Languages
 %{java_demo_rpo %{nil}}
 
 %description demo
-The %{origin_nice} %{fakefeaturever} demos.
+The %{origin_nice} %{featurever} demos.
 %endif
 
 %if %{include_debug_build}
 %package demo-slowdebug
-Summary: %{origin_nice} %{fakefeaturever} Demos %{debug_on}
+Summary: %{origin_nice} %{featurever} Demos %{debug_on}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1661,13 +1736,13 @@ Group:   Development/Languages
 %{java_demo_rpo -- %{debug_suffix_unquoted}}
 
 %description demo-slowdebug
-The %{origin_nice} %{fakefeaturever} demos.
+The %{origin_nice} %{featurever} demos.
 %{debug_warning}
 %endif
 
 %if %{include_fastdebug_build}
 %package demo-fastdebug
-Summary: %{origin_nice} %{fakefeaturever} Demos %{fastdebug_on}
+Summary: %{origin_nice} %{featurever} Demos %{fastdebug_on}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1675,13 +1750,13 @@ Group:   Development/Languages
 %{java_demo_rpo -- %{fastdebug_suffix_unquoted}}
 
 %description demo-fastdebug
-The %{origin_nice} %{fakefeaturever} demos.
+The %{origin_nice} %{featurever} demos.
 %{fastdebug_warning}
 %endif
 
 %if %{include_normal_build}
 %package src
-Summary: %{origin_nice} %{fakefeaturever} Source Bundle
+Summary: %{origin_nice} %{featurever} Source Bundle
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1689,13 +1764,13 @@ Group:   Development/Languages
 %{java_src_rpo %{nil}}
 
 %description src
-The %{compatiblename}-src sub-package contains the complete %{origin_nice} %{fakefeaturever}
+The %{compatiblename}-src sub-package contains the complete %{origin_nice} %{featurever}
 class library source code for use by IDE indexers and debuggers.
 %endif
 
 %if %{include_debug_build}
 %package src-slowdebug
-Summary: %{origin_nice} %{fakefeaturever} Source Bundle %{for_debug}
+Summary: %{origin_nice} %{featurever} Source Bundle %{for_debug}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1703,13 +1778,13 @@ Group:   Development/Languages
 %{java_src_rpo -- %{debug_suffix_unquoted}}
 
 %description src-slowdebug
-The %{compatiblename}-src-slowdebug sub-package contains the complete %{origin_nice} %{fakefeaturever}
+The %{compatiblename}-src-slowdebug sub-package contains the complete %{origin_nice} %{featurever}
  class library source code for use by IDE indexers and debuggers, %{for_debug}.
 %endif
 
 %if %{include_fastdebug_build}
 %package src-fastdebug
-Summary: %{origin_nice} %{fakefeaturever} Source Bundle %{for_fastdebug}
+Summary: %{origin_nice} %{featurever} Source Bundle %{for_fastdebug}
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Development/Languages
 %endif
@@ -1717,13 +1792,13 @@ Group:   Development/Languages
 %{java_src_rpo -- %{fastdebug_suffix_unquoted}}
 
 %description src-fastdebug
-The %{compatiblename}-src-fastdebug sub-package contains the complete %{origin_nice} %{fakefeaturever}
+The %{compatiblename}-src-fastdebug sub-package contains the complete %{origin_nice} %{featurever}
  class library source code for use by IDE indexers and debuggers, %{for_fastdebug}.
 %endif
 
 %if %{include_normal_build}
 %package javadoc
-Summary: %{origin_nice} %{fakefeaturever} API documentation
+Summary: %{origin_nice} %{featurever} API documentation
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Documentation
 %endif
@@ -1739,9 +1814,9 @@ Requires(postun): %{alternatives_requires}
 %{java_javadoc_rpo -- %{nil}}
 
 %description javadoc
-The %{origin_nice} %{fakefeaturever} API documentation.
+The %{origin_nice} %{featurever} API documentation.
 %package javadoc-zip
-Summary: %{origin_nice} %{fakefeaturever} API documentation compressed in a single archive
+Summary: %{origin_nice} %{featurever} API documentation compressed in a single archive
 %if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
 Group:   Documentation
 %endif
@@ -1758,7 +1833,7 @@ Requires(postun): %{alternatives_requires}
 %{java_javadoc_rpo -- %{nil}}
 
 %description javadoc-zip
-The %{origin_nice} %{fakefeaturever} API documentation compressed in a single archive.
+The %{origin_nice} %{featurever} API documentation compressed in a single archive.
 %endif
 
 %prep
@@ -1891,11 +1966,11 @@ mkdir -p $(dirname %{installoutputdir})
 
 docdir=%{installoutputdir -- "-docs"}
 tar -xJf %{docszip}
-mv java-%{fakefeaturever}-openjdk*.docs.* ${docdir}
+mv java-%{featurever}-openjdk*.docs.* ${docdir}
 
 miscdir=%{installoutputdir -- "-misc"}
 tar -xJf %{misczip}
-mv java-%{fakefeaturever}-openjdk*.misc.* ${miscdir}
+mv java-%{featurever}-openjdk*.misc.* ${miscdir}
 
 for suffix in %{build_loop} ; do
 
@@ -1915,7 +1990,7 @@ for suffix in %{build_loop} ; do
   # TODO: should verify checksums when using packages from buildroot
   tar -xJf ${jdkzip}
   tar -xJf ${staticlibzip}
-  mv java-%{fakefeaturever}-openjdk* ${installdir}
+  mv java-%{featurever}-openjdk* ${installdir}
 
   # Fix build paths in ELF files so it looks like we built them
   portablenvr="%{name}-%{VERSION}-%{prelease}.%{portablesuffix}.%{_arch}"
@@ -2002,14 +2077,14 @@ $JAVA_HOME/bin/java -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -versi
   unzip -l $JAVA_HOME/lib/src.zip | grep 'sun.misc.Unsafe'
 
   # Check class files include useful debugging information
-  $JAVA_HOME/bin/javap -l java.lang.Object | grep "Compiled from"
-  $JAVA_HOME/bin/javap -l java.lang.Object | grep LineNumberTable
-  $JAVA_HOME/bin/javap -l java.lang.Object | grep LocalVariableTable
+  $JAVA_HOME/bin/javap -c -l java.lang.Object | grep "Compiled from"
+  $JAVA_HOME/bin/javap -c -l java.lang.Object | grep LineNumberTable
+  $JAVA_HOME/bin/javap -c -l java.lang.Object | grep LocalVariableTable
 
   # Check generated class files include useful debugging information
-  $JAVA_HOME/bin/javap -l java.nio.ByteBuffer | grep "Compiled from"
-  $JAVA_HOME/bin/javap -l java.nio.ByteBuffer | grep LineNumberTable
-  $JAVA_HOME/bin/javap -l java.nio.ByteBuffer | grep LocalVariableTable
+  $JAVA_HOME/bin/javap -c -l java.nio.ByteBuffer | grep "Compiled from"
+  $JAVA_HOME/bin/javap -c -l java.nio.ByteBuffer | grep LineNumberTable
+  $JAVA_HOME/bin/javap -c -l java.nio.ByteBuffer | grep LocalVariableTable
 
 %else
 
@@ -2157,8 +2232,7 @@ install -D -p -m 755 ${miscdir}/%{alt_java_name} $RPM_BUILD_ROOT%{jrebindir -- $
       ln -sf /etc/pki/java/cacerts .
   popd
 
-  # Copy alt-java man page into image so it gets installed with the others
-  cp -a ${miscdir}/%{alt_java_name}.1 ${jdk_image}/man/man1
+%if %{pandoc_available}
   # Install man pages
   install -d -m 755 $RPM_BUILD_ROOT%{_mandir}/man1
   pushd ${jdk_image}
@@ -2173,6 +2247,7 @@ install -D -p -m 755 ${miscdir}/%{alt_java_name} $RPM_BUILD_ROOT%{jrebindir -- $
   # Remove man pages from jdk image
   rm -rf $RPM_BUILD_ROOT%{_jvmdir}/%{sdkdir -- $suffix}/man
   popd
+%endif
 
 if ! echo $suffix | grep -q "debug" ; then
     # Install Javadoc documentation
@@ -2478,6 +2553,43 @@ exit 0
 %endif
 
 %changelog
+* Wed Nov 12 2025 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.1.0.8-2
+- Remove superfluous backslashes that cause two alternative commands to be combined
+- Related: RHEL-120553
+
+* Mon Nov 10 2025 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.1.0.8-1
+- Update to jdk-25.0.1+8 (GA)
+- Update release notes with features of JDK 25
+- Mention finalisation JEP for features finalised in JDK 22, 23 & 24
+- Drop fakefeaturever now we have reached OpenJDK 25
+- Update release notes to 25.0.1+8
+- Sync the copy of the portable specfile with the latest update
+- Resolves: RHEL-120553
+
+* Wed Nov 05 2025 Andrew Hughes <gnu.andrew@redhat.com> - 1:24.0.2.0.12-1
+- Update to jdk-24.0.2+12 (GA)
+- Update release notes with features of JDK 24
+- alt-java man page installation is now handled by the OpenJDK build
+- Adjust TestTranslations.java with updated German translations from CLDR 46 (JDK-8333582) (Mountain->Mountains)
+- Run javap with the disassembled code (-c) option now required for -l by JDK-8345145
+- Sync the copy of the portable specfile with the latest update
+- Remove default.policy and java.policy following JDK-8338411: "Permanently Disable the Security Manager"
+- Make man page handling dependent on pandoc being available during the portable build
+- Handle new CDS archive variants (*_coh*) added by Compact Object Headers (JDK-8305895)
+- Add missing man page alternatives for jdeprscan, jfr, jhsdb, jimage, jlink & jmod and fix alphabetical ordering
+- Support jnativescan added by JDK-8317611: "Add a tool like jdeprscan to find usage of restricted methods"
+- Add recent native libraries to _privatelibs (libjsvml.so, libsimdsort.so, libsyslookup.so)
+- Support libsleef on AArch64 & RISC-V added by JDK-8329816, JDK-8320500 (RISC-V) & JDK-8312425 (AArch64)
+- Related: RHEL-120553
+
+* Sat Oct 25 2025 Andrew Hughes <gnu.andrew@redhat.com> - 1:23.0.2.0.7-1
+- Update to jdk-23.0.2+7 (GA)
+- Update release notes with features of JDK 23
+- Sync the copy of the portable specfile with the latest update
+- Remove lible.so handling following its removal in JDK-8327476: "Upgrade JLine to 3.26.1"
+- Install jaxp-strict.properties.template added by JDK-8330542: "Template for Creating Strict JAXP Configuration File"
+- Related: RHEL-120553
+
 * Tue Sep 23 2025 Andrew Hughes <gnu.andrew@redhat.com> - 1:22.0.2.0.9-1
 - Update to jdk-22.0.2+9 (GA)
 - Update release notes with features of JDK 22
