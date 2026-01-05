@@ -204,27 +204,6 @@
 %endif
 %endif
 
-%if %{include_staticlibs}
-# Extra target for producing the static-libraries. Separate from
-# other targets since this target is configured to use in-tree
-# AWT dependencies: lcms, libjpeg, libpng, libharfbuzz, giflib
-# and possibly others
-%global static_libs_target static-libs-image
-%else
-%global static_libs_target %{nil}
-%endif
-
-# RPM JDK builds keep the debug symbols internal, to be later stripped by RPM
-%global debug_symbols internal
-
-# unlike portables,the rpms have to use static_libs_target very dynamically
-%global bootstrap_targets images
-%global release_targets images docs-zip
-# No docs nor bootcycle for debug builds
-%global debug_targets images
-# Target to use to just build HotSpot
-%global hotspot_target hotspot
-
 # debugedit tool for rewriting ELF file paths
 %if 0%{?rhel} >= 10
 # From RHEL 10, the tool is in its own package installed in the usual location
@@ -233,15 +212,6 @@
 # On earlier versions of RHEL, it is part of the rpm package
 %global debugedit %{_rpmconfigdir}/debugedit
 %endif
-
-# Filter out flags from the optflags macro that cause problems with the OpenJDK build
-# We filter out -O flags so that the optimization of HotSpot is not lowered from O3 to O2
-# We filter out -Wall which will otherwise cause HotSpot to produce hundreds of thousands of warnings (100+mb logs)
-# We replace it with -Wformat (required by -Werror=format-security) and -Wno-cpp to avoid FORTIFY_SOURCE warnings
-# We filter out -fexceptions as the HotSpot build explicitly does -fno-exceptions and it's otherwise the default for C++
-%global ourflags %(echo %optflags | sed -e 's|-Wall|-Wformat -Wno-cpp|' | sed -r -e 's|-O[0-9]*||')
-%global ourcppflags %(echo %ourflags | sed -e 's|-fexceptions||')
-%global ourldflags %{__global_ldflags}
 
 # In some cases, the arch used by the JDK does
 # not match _arch.
@@ -352,9 +322,12 @@
 # Define IcedTea version used for SystemTap tapsets and desktop file
 %global icedteaver      6.0.0pre00-c848b93a8598
 # Define current Git revision for the crypto policy & FIPS support patches
-%global fipsver 9203d50836c
+%global fipsver df044414ef4
+# Define nssadapter variables
+%global nssadapter_version 0.1.0
+%global nssadapter_name nssadapter-%{nssadapter_version}
 # Define whether the crypto policy is expected to be active when testing
-%global crypto_policy_active false
+%global crypto_policy_active true
 # Define JDK versions
 %global newjavaver %{featurever}.%{interimver}.%{updatever}.%{patchver}
 %global javaver         %{featurever}
@@ -376,9 +349,9 @@
 %global top_level_dir_name   %{vcstag}
 %global top_level_dir_name_backup %{top_level_dir_name}-backup
 %global buildver        8
-%global rpmrelease      2
+%global rpmrelease      6
 # Settings used by the portable build
-%global portablerelease 1
+%global portablerelease 2
 # Portable suffix differs between RHEL and CentOS
 %if 0%{?centos} == 0
 %global portablerhel %{?pkgos:7_9}%{!?pkgos:8}
@@ -429,9 +402,6 @@
 # parametrized macros are order-sensitive
 %global compatiblename  java-%{featurever}-%{origin}
 %global fullversion     %{compatiblename}-%{version}-%{release}
-# images directories from upstream build
-%global jdkimage                jdk
-%global static_libs_image       static-libs
 # output dir stub
 %define installoutputdir() %{expand:install/jdk%{featurever}.install%{?1}}
 # we can copy the javadoc to not arched dir, or make it not noarch
@@ -904,6 +874,21 @@ fi
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/security/policy/unlimited/default_US_export.policy
  %{etcjavadir -- %{?1}}/conf/security/policy/README.txt
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/security/java.security
+%dir %{etcjavadir -- %{?1}}/conf/security/redhat
+%dir %{etcjavadir -- %{?1}}/conf/security/redhat/false
+%dir %{etcjavadir -- %{?1}}/conf/security/redhat/true
+# config-noreplace in case the system administrator wants to adjust
+# the FIPS configuration
+%config(noreplace) %{etcjavadir -- %{?1}}/conf/security/redhat/SunPKCS11-FIPS.cfg
+# config-noreplace in case the system administrator wants to change
+# the default for crypto-policies usage
+%config(noreplace) %{etcjavadir -- %{?1}}/conf/security/redhat/crypto-policies.properties
+# The system administrator is never expected to change these files -- they
+# are implementation details -- so leave them as not config-noreplace
+%config %{etcjavadir -- %{?1}}/conf/security/redhat/false/crypto-policies.properties
+%config %{etcjavadir -- %{?1}}/conf/security/redhat/true/crypto-policies.properties
+%config %{etcjavadir -- %{?1}}/conf/security/redhat/false/fips.properties
+%config %{etcjavadir -- %{?1}}/conf/security/redhat/true/fips.properties
 %config(noreplace) %{etcjavadir -- %{?1}}/conf/management/jmxremote.access
 # This is a config template, thus not config-noreplace
 %config  %{etcjavadir -- %{?1}}/conf/management/jmxremote.password.template
@@ -1066,7 +1051,6 @@ fi
 %dir %{_jvmdir}/%{sdkdir -- %{?1}}/lib/static/linux-%{archinstall}
 %dir %{_jvmdir}/%{sdkdir -- %{?1}}/lib/static/linux-%{archinstall}/glibc
 %{_jvmdir}/%{sdkdir -- %{?1}}/lib/static/linux-%{archinstall}/glibc/lib*.a
-%{_jvmdir}/%{sdkdir -- %{?1}}/lib/static/linux-%{archinstall}/glibc/%{vm_variant}/lib*.a
 }
 
 %define files_javadoc() %{expand:
@@ -1090,6 +1074,11 @@ fi
 %ghost %{_javadocdir}/java-%{javaver}.zip
 %endif
 %endif
+}
+
+%define files_crypto_adapter() %{expand:
+%dir %{_libdir}/%{sdkdir -- %{?1}}
+%{_libdir}/%{sdkdir -- %{?1}}/libnssadapter.so
 }
 
 # not-duplicated requires/provides/obsoletes for normal/debug packages
@@ -1141,8 +1130,6 @@ Requires: lksctp-tools%{?_isa}
 Requires: cups-libs
 # for system security properties
 Requires: crypto-policies
-# for FIPS PKCS11 provider
-Requires: nss
 # Post requires alternatives to install tool alternatives
 Requires(post):   %{alternatives_requires}
 # Postun requires alternatives to uninstall tool alternatives
@@ -1152,6 +1139,8 @@ Requires(postun): %{alternatives_requires}
 %if 0%{?rhel} >= 8 || 0%{?fedora} > 0
 Suggests: lksctp-tools%{?_isa}, pcsc-lite-libs%{?_isa}
 %endif
+# for libnssadapter.so
+Requires: %{name}-crypto-adapter%{?1}%{?_isa} = %{epoch}:%{version}-%{release}
 
 # Standard JPackage base provides
 Provides: jre-%{javaver}-%{origin}-headless%{?1} = %{epoch}:%{version}-%{release}
@@ -1355,6 +1344,12 @@ Source29: 0007-Tools.gmk-Exclude-systemtap-sdt-devel-on-s390x-ppc64.patch
 # Use update repository on RHEL rather than GA (OPENJDK-3589)
 Source30: 0008-Tools.gmk-Use-update-repository-on-RHEL-rather-than-.patch
 
+# FIPS support sources.
+# For libnssadapter.so (RHEL-128413)
+Source31: https://github.com/rh-openjdk/nss-native-fips-key-import-export-adapter/releases/download/%{nssadapter_version}/%{nssadapter_name}.tar.xz
+# Create OpenJDK's crypto-policies hierarchy (RHEL-128409)
+Source32: create-redhat-properties-files.bash
+
 # Setup variables to reference correct sources
 %global releasezip %{_jvmdir}/%{name}-%{version}-%{prelease}.portable.unstripped.jdk.%{_arch}.tar.xz
 %global staticlibzip %{_jvmdir}/%{name}-%{version}-%{prelease}.portable.static-libs.%{_arch}.tar.xz
@@ -1373,7 +1368,7 @@ Source30: 0008-Tools.gmk-Use-update-repository-on-RHEL-rather-than-.patch
 
 # Crypto policy and FIPS support patches
 # Patch is generated from the fips-25u tree at https://github.com/rh-openjdk/jdk/tree/fips-25u
-# as follows: git diff %%{vcstag} src make test > fips-21u-$(git show -s --format=%h HEAD).patch
+# as follows: git diff %%{vcstag} src make test > fips-25u-$(git show -s --format=%h HEAD).patch
 # Diff is limited to src and make subdirectories to exclude .github changes
 # Fixes currently included:
 # PR3183, RH1340845: Follow system wide crypto policy
@@ -1407,7 +1402,7 @@ Source30: 0008-Tools.gmk-Use-update-repository-on-RHEL-rather-than-.patch
 # test/jdk/sun/security/pkcs11/fips/VerifyMissingAttributes.java: fixed jtreg main class
 # RH1940064: Enable XML Signature provider in FIPS mode
 # RH2173781: Avoid calling C_GetInfo() too early, before cryptoki is initialized [now part of JDK-8301553 upstream]
-# Disabled until 25: Patch1001: fips-%{featurever}u-%{fipsver}.patch
+Patch1001: fips-%{featurever}u-%{fipsver}.patch
 
 #############################################
 #
@@ -1432,6 +1427,13 @@ Source30: 0008-Tools.gmk-Use-update-repository-on-RHEL-rather-than-.patch
 #############################################
 
 # Currently empty
+
+#############################################
+#
+# NSS adapter patches
+#
+#############################################
+Patch2001: nssadapter-ldflags.patch
 
 BuildRequires: autoconf
 BuildRequires: automake
@@ -1489,6 +1491,10 @@ BuildRequires: gcc >= 4.8.3-8
 BuildRequires: systemtap-sdt-devel
 %endif
 BuildRequires: make
+
+# libnssadapter.so build requirements
+BuildRequires: nss-devel
+BuildRequires: nss-softokn-devel
 
 %if %{system_libs}
 BuildRequires: freetype-devel
@@ -1836,6 +1842,46 @@ Requires(postun): %{alternatives_requires}
 The %{origin_nice} %{featurever} API documentation compressed in a single archive.
 %endif
 
+# java-25-openjdk-crypto-adapter
+%if %{include_normal_build}
+%package crypto-adapter
+Summary: %{origin_nice} %{featurever} Cryptography Adapter Library
+%if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
+Group:   Development/Languages
+%endif
+
+# java-25-openjdk-crypto-adapter does not need an "rpo" function since
+# its specific nss and nss-softokn library requirements are
+# automatically generated by RPM.
+
+%description crypto-adapter
+The %{origin_nice} %{featurever} cryptography adapter library.
+%endif
+
+%if %{include_debug_build}
+%package crypto-adapter-slowdebug
+Summary: %{origin_nice} %{featurever} Cryptography Adapter Library %{debug_on}
+%if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
+Group:   Development/Languages
+%endif
+
+%description crypto-adapter-slowdebug
+The %{origin_nice} %{featurever} cryptography adapter library.
+%{debug_warning}
+%endif
+
+%if %{include_fastdebug_build}
+%package crypto-adapter-fastdebug
+Summary: %{origin_nice} %{featurever} Cryptography Adapter Library %{fastdebug_on}
+%if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
+Group:   Development/Languages
+%endif
+
+%description crypto-adapter-fastdebug
+The %{origin_nice} %{featurever} cryptography adapter library.
+%{fastdebug_warning}
+%endif
+
 %prep
 
 echo "Preparing %{oj_vendor_version}"
@@ -1873,6 +1919,8 @@ fi
 
 export XZ_OPT="-T0"
 %setup -q -c -n %{uniquesuffix ""} -T -a 0
+# Prepare libnssadapter.so source code
+tar -xJf %{SOURCE31}
 # https://bugzilla.redhat.com/show_bug.cgi?id=1189084
 prioritylength=`expr length %{priority}`
 if [ $prioritylength -ne 8 ] ; then
@@ -1903,9 +1951,13 @@ sh %{SOURCE12} %{top_level_dir_name}
 # rpmbuild.
 pushd %{top_level_dir_name}
 # Add crypto policy and FIPS support
-# Disabled until 25
-#%patch -P1001 -p1
+%patch -P1001 -p1
 popd # openjdk
+
+# Patch NSS adapter
+pushd %{nssadapter_name}
+%patch -P2001 -p1
+popd # nssadapter
 
 # The OpenJDK version file includes the current
 # upstream version information. For some reason,
@@ -1948,11 +2000,12 @@ done
 
 function customisejdk() {
     local imagepath=${1}
+    local suffix=${2}
 
     if [ -d ${imagepath} ] ; then
-        # Turn on system security properties
-        sed -i -e "s:^security.useSystemPropertiesFile=.*:security.useSystemPropertiesFile=true:" \
-            ${imagepath}/conf/security/java.security
+        # Install crypto-policies FIPS configuration files and append
+        # include line to java.security
+        bash -x %{SOURCE32} ${imagepath}/conf/security %{_libdir}/%{sdkdir -- ${suffix}}/libnssadapter.so
 
         # Use system-wide tzdata
         rm ${imagepath}/lib/tzdb.dat
@@ -1977,12 +2030,16 @@ for suffix in %{build_loop} ; do
   if [ "x$suffix" = "x" ] ; then
       jdkzip=%{releasezip}
       staticlibzip=%{staticlibzip}
+      make -C %{nssadapter_name} CFLAGS="%{build_cflags}" LDFLAGS="%{build_ldflags}"
   elif [ "x$suffix" = "x%{fastdebug_suffix_unquoted}" ] ; then
       jdkzip=%{fastdebugzip}
       staticlibzip=%{fastdebugstaticlibzip}
+      make -C %{nssadapter_name} CFLAGS="%{build_cflags}" LDFLAGS="%{build_ldflags}"
   else # slowdebug
       jdkzip=%{slowdebugzip}
       staticlibzip=%{slowdebugstaticlibzip}
+      # Disable _FORTIFY_SOURCE to allow for no optimization
+      make -C %{nssadapter_name} CFLAGS="%{build_cflags} -O0 -Wp,-U_FORTIFY_SOURCE" LDFLAGS="%{build_ldflags}"
   fi
 
   installdir=%{installoutputdir -- ${suffix}}
@@ -1991,6 +2048,10 @@ for suffix in %{build_loop} ; do
   tar -xJf ${jdkzip}
   tar -xJf ${staticlibzip}
   mv java-%{featurever}-openjdk* ${installdir}
+
+  # Install and clean libnssadapter.so
+  install -m 755 %{nssadapter_name}/bin/libnssadapter.so ${installdir}/lib
+  make -C %{nssadapter_name} clean
 
   # Fix build paths in ELF files so it looks like we built them
   portablenvr="%{name}-%{VERSION}-%{prelease}.%{portablesuffix}.%{_arch}"
@@ -2017,7 +2078,7 @@ for suffix in %{build_loop} ; do
 %endif
 
   # Final setup on the main image
-  customisejdk ${installdir}
+  customisejdk ${installdir} ${suffix}
 
   # Print release information
   cat ${installdir}/release
@@ -2057,7 +2118,7 @@ $JAVA_HOME/bin/java -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -versi
   export PROG=$(echo $(basename %{SOURCE15})|sed "s|\.java||")
   export SEC_DEBUG="-Djava.security.debug=properties"
   $JAVA_HOME/bin/java ${SEC_DEBUG} ${PROG} %{crypto_policy_active}
-  $JAVA_HOME/bin/java ${SEC_DEBUG} -Djava.security.disableSystemPropertiesFile=true ${PROG} false
+  $JAVA_HOME/bin/java ${SEC_DEBUG} -Dredhat.crypto-policies=false ${PROG} false
 
   # Check correct vendor values have been set
   $JAVA_HOME/bin/javac -d . %{SOURCE16}
@@ -2224,6 +2285,9 @@ install -D -p -m 755 ${miscdir}/%{alt_java_name} $RPM_BUILD_ROOT%{jrebindir -- $
     ln -sf %{_jvmdir}/%{sdkdir -- $suffix}/tapset/$name $RPM_BUILD_ROOT%{tapsetdir}/$targetName
   done
 %endif
+
+  install -d -m 755 $RPM_BUILD_ROOT%{_libdir}/%{sdkdir -- ${suffix}}
+  mv $RPM_BUILD_ROOT%{_jvmdir}/%{sdkdir -- $suffix}/lib/libnssadapter.so $RPM_BUILD_ROOT%{_libdir}/%{sdkdir -- ${suffix}}
 
   # Remove empty cacerts database
   rm -f $RPM_BUILD_ROOT%{_jvmdir}/%{sdkdir -- $suffix}/lib/security/cacerts
@@ -2471,6 +2535,9 @@ exit 0
 %endif
 
 %if %{include_normal_build}
+%files crypto-adapter
+%{files_crypto_adapter %{nil}}
+
 %files headless
 %{files_jre_headless %{nil}}
 
@@ -2502,6 +2569,9 @@ exit 0
 %endif
 
 %if %{include_debug_build}
+%files crypto-adapter-slowdebug
+%{files_crypto_adapter -- %{debug_suffix_unquoted}}
+
 %files slowdebug
 %{files_jre -- %{debug_suffix_unquoted}}
 
@@ -2527,6 +2597,9 @@ exit 0
 %endif
 
 %if %{include_fastdebug_build}
+%files crypto-adapter-fastdebug
+%{files_crypto_adapter --  %{fastdebug_suffix_unquoted}}
+
 %files fastdebug
 %{files_jre -- %{fastdebug_suffix_unquoted}}
 
@@ -2553,6 +2626,39 @@ exit 0
 %endif
 
 %changelog
+* Sat Dec 06 2025 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.1.0.8-6
+- Sync the copy of the portable specfile with the latest update
+- Related: RHEL-133733
+- Related: RHEL-133735
+
+* Thu Dec 04 2025 Thomas Fitzsimmons <fitzsim@redhat.com> - 1:25.0.1.0.8-6
+- Remove /usr/lib/jvm/java-25-openjdk/conf/security/redhat/fips.properties
+- Resolves: RHEL-131897
+
+* Thu Dec 04 2025 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.1.0.8-5
+- Incorporate new FIPS patch for 25u
+- Drop static libjvm.a following adjusted build target for portable build
+- Remove redundant (and now outdated) build targets, jdkimage and static_libs_image
+- Pass ourflags and ourldflags into the nssadapter build using CFLAGS & LDFLAGS
+- Patch the nssadapter build to recognise LDFLAGS
+- Remove OpenJDK compiler flag filters and use build_{c,ld}flags directly
+- Resolves: RHEL-133733
+- Resolves: RHEL-133735
+- Resolves: RHEL-133763
+
+* Wed Nov 26 2025 Thomas Fitzsimmons <fitzsim@redhat.com> - 1:25.0.1.0.8-4
+- Add java-25-openjdk-crypto-adapter subpackage
+- Update library setting in create-redhat-properties-files.bash
+- Resolves: RHEL-131896
+
+* Mon Nov 24 2025 Thomas Fitzsimmons <fitzsim@redhat.com> - 1:25.0.1.0.8-3
+- Add libnssadapter.so
+- Add FIPS crypto-policies configuration
+- Remove obsolete security.useSystemPropertiesFile setup
+- Update TestSecurityProperties.java test and calling convention
+- Resolves: RHEL-128413
+- Resolves: RHEL-128409
+
 * Wed Nov 12 2025 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.1.0.8-2
 - Remove superfluous backslashes that cause two alternative commands to be combined
 - Related: RHEL-120553

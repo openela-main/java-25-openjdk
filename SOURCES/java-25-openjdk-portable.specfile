@@ -226,7 +226,7 @@
 # other targets since this target is configured to use in-tree
 # AWT dependencies: lcms, libjpeg, libpng, libharfbuzz, giflib
 # and possibly others
-%global static_libs_target static-libs-image
+%global static_libs_target static-libs-graal-image
 %else
 %global static_libs_target %{nil}
 %endif
@@ -376,7 +376,7 @@
 # Define IcedTea version used for SystemTap tapsets and desktop file
 %global icedteaver      6.0.0pre00-c848b93a8598
 # Define current Git revision for the FIPS support patches
-%global fipsver 9203d50836c
+%global fipsver df044414ef4
 # Define JDK versions
 %global newjavaver %{featurever}.%{interimver}.%{updatever}.%{patchver}
 %global javaver         %{featurever}
@@ -391,7 +391,7 @@
 %global top_level_dir_name   %{vcstag}
 %global top_level_dir_name_backup %{top_level_dir_name}-backup
 %global buildver        8
-%global rpmrelease      1
+%global rpmrelease      2
 #%%global tagsuffix     %%{nil}
 # Priority must be 8 digits in total; up to openjdk 1.8, we were using 18..... so when we moved to 11, we had to add another digit
 %if %is_system_jdk
@@ -430,7 +430,7 @@
 %global fullversion     %{compatiblename}-%{version}-%{release}
 # images directories from upstream build
 %global jdkimage                jdk
-%global static_libs_image       static-libs
+%global static_libs_image       static-libs-graal
 # output dir stub
 %define buildoutputdir() %{expand:build/jdk%{featurever}.build%{?1}}
 %define installoutputdir() %{expand:install/jdk%{featurever}.install%{?1}}
@@ -640,7 +640,7 @@ Source18: TestTranslations.java
 ############################################
 # Crypto policy and FIPS support patches
 # Patch is generated from the fips-25u tree at https://github.com/rh-openjdk/jdk/tree/fips-25u
-# as follows: git diff %%{vcstag} src make test > fips-21u-$(git show -s --format=%h HEAD).patch
+# as follows: git diff %%{vcstag} src make test > fips-25u-$(git show -s --format=%h HEAD).patch
 # Diff is limited to src and make subdirectories to exclude .github changes
 # Fixes currently included:
 # PR3183, RH1340845: Follow system wide crypto policy
@@ -674,7 +674,7 @@ Source18: TestTranslations.java
 # test/jdk/sun/security/pkcs11/fips/VerifyMissingAttributes.java: fixed jtreg main class
 # RH1940064: Enable XML Signature provider in FIPS mode
 # RH2173781: Avoid calling C_GetInfo() too early, before cryptoki is initialized [now part of JDK-8301553 upstream]
-# Disabled until 25: Patch1001: fips-%{featurever}u-%{fipsver}.patch
+Patch1001: fips-%{featurever}u-%{fipsver}.patch
 
 #############################################
 #
@@ -1003,8 +1003,7 @@ sh %{SOURCE12} %{top_level_dir_name}
 # rpmbuild.
 pushd %{top_level_dir_name}
 # Add crypto policy and FIPS support
-# Disabled until 25
-#%patch -P1001 -p1
+%patch -P1001 -p1
 popd # openjdk
 
 echo "Generating %{alt_java_name} man page"
@@ -1967,6 +1966,14 @@ done
 %endif
 
 %changelog
+* Tue Dec 02 2025 Severin Gehwolf <sgehwolf@redhat.com> - 1:25.0.1.0.8-2
+- Switch from static-libs-image to static-libs-graal-image to avoid large unneeded libjvm.a
+- Resolves: OPENJDK-4197
+
+* Tue Dec 02 2025 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.1.0.8-2
+- Incorporate new FIPS patch for 25u
+- Resolves: OPENJDK-4184
+
 * Mon Nov 10 2025 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.1.0.8-1
 - Update to jdk-25.0.1+8 (GA)
 - Update release notes to 25.0.1+8
