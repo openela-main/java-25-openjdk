@@ -286,7 +286,7 @@
 # New Version-String scheme-style defines
 %global featurever 25
 %global interimver 0
-%global updatever 1
+%global updatever 2
 %global patchver 0
 # We don't add any LTS designator for STS packages (Fedora and EPEL).
 # We need to explicitly exclude EPEL as it would have the %%{rhel} macro defined.
@@ -348,8 +348,8 @@
 %global origin_nice     OpenJDK
 %global top_level_dir_name   %{vcstag}
 %global top_level_dir_name_backup %{top_level_dir_name}-backup
-%global buildver        8
-%global rpmrelease      6
+%global buildver        10
+%global rpmrelease      1
 # Settings used by the portable build
 %global portablerelease 2
 # Portable suffix differs between RHEL and CentOS
@@ -1417,8 +1417,9 @@ Patch1001: fips-%{featurever}u-%{fipsver}.patch
 # OpenJDK patches which missed last update
 #
 #############################################
-
-# Currently empty
+# JDK-8372534: Update Libpng to 1.6.51
+# Integrated in 25.0.3
+Patch2001: jdk8372534-libpng-1.6.51.patch
 
 #############################################
 #
@@ -1433,7 +1434,7 @@ Patch1001: fips-%{featurever}u-%{fipsver}.patch
 # NSS adapter patches
 #
 #############################################
-Patch2001: nssadapter-ldflags.patch
+Patch3001: nssadapter-ldflags.patch
 
 BuildRequires: autoconf
 BuildRequires: automake
@@ -1516,7 +1517,7 @@ Provides: bundled(lcms2) = 2.17.0
 # Version in src/java.desktop/share/native/libjavajpeg/jpeglib.h
 Provides: bundled(libjpeg) = 6b
 # Version in src/java.desktop/share/native/libsplashscreen/libpng/png.h
-Provides: bundled(libpng) = 1.6.47
+Provides: bundled(libpng) = 1.6.51
 # Version in src/java.base/share/native/libzip/zlib/zlib.h
 Provides: bundled(zlib) = 1.3.1
 %endif
@@ -1952,11 +1953,13 @@ sh %{SOURCE12} %{top_level_dir_name}
 pushd %{top_level_dir_name}
 # Add crypto policy and FIPS support
 %patch -P1001 -p1
+# Add libpng update ahead of 25.0.3
+%patch -P2001 -p1
 popd # openjdk
 
 # Patch NSS adapter
 pushd %{nssadapter_name}
-%patch -P2001 -p1
+%patch -P3001 -p1
 popd # nssadapter
 
 # The OpenJDK version file includes the current
@@ -2005,7 +2008,7 @@ function customisejdk() {
     if [ -d ${imagepath} ] ; then
         # Install crypto-policies FIPS configuration files and append
         # include line to java.security
-        bash -x %{SOURCE32} ${imagepath}/conf/security %{_libdir}/%{sdkdir -- ${suffix}}/libnssadapter.so
+        bash -ex %{SOURCE32} ${imagepath}/conf/security %{_libdir}/%{sdkdir -- ${suffix}}/libnssadapter.so
 
         # Use system-wide tzdata
         rm ${imagepath}/lib/tzdb.dat
@@ -2626,6 +2629,26 @@ exit 0
 %endif
 
 %changelog
+* Wed Jan 21 2026 Jiri Vanek <jvanek@redhat.com> - 1:25.0.2.0.10-1
+- Execute create-redhat-properties-files.bash with '-e' to exit on failure
+- Related: RHEL-142855
+
+* Mon Jan 12 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.2.0.10-1
+- Update to jdk-25.0.2+10 (GA)
+- Update release notes to 25.0.2+10
+- Add JDK-8372534 libpng 1.6.51 ahead of 25.0.3
+- Bump libpng version to 1.6.51 following JDK-8372534
+- Bump ID of NSS adapter patch so we can stay in sync with portable on the libpng patch
+- Test for java.security's existence in create-redhat-properties-files.bash
+- Handle 'upgrade' as an alternative to 'update' in openjdk_news.sh
+- Sync the copy of the portable specfile with the latest update
+- ** This tarball is embargoed until 2026-01-20 @ 1pm PT. **
+- Resolves: RHEL-139579
+- Resolves: RHEL-131430
+- Resolves: RHEL-131443
+- Resolves: RHEL-142855
+- Resolves: RHEL-142799
+
 * Sat Dec 06 2025 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.1.0.8-6
 - Sync the copy of the portable specfile with the latest update
 - Related: RHEL-133733

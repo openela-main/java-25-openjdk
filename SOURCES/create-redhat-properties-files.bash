@@ -109,6 +109,8 @@ security.provider.8=
 keystore.type=pkcs12
 EOF
 
+# Make sure java.security exists before appending
+test -e "${SECURITY}"/java.security || ( echo "${SECURITY}/java.security not found" && false )
 cat >> "${SECURITY}"/java.security <<'EOF'
 
 #

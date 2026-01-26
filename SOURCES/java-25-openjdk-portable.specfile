@@ -336,7 +336,7 @@
 # New Version-String scheme-style defines
 %global featurever 25
 %global interimver 0
-%global updatever 1
+%global updatever 2
 %global patchver 0
 # buildjdkver is usually same as %%{featurever},
 # but in time of bootstrap of next jdk, it is featurever-1,
@@ -390,7 +390,7 @@
 %global origin_nice     OpenJDK
 %global top_level_dir_name   %{vcstag}
 %global top_level_dir_name_backup %{top_level_dir_name}-backup
-%global buildver        8
+%global buildver        10
 %global rpmrelease      2
 #%%global tagsuffix     %%{nil}
 # Priority must be 8 digits in total; up to openjdk 1.8, we were using 18..... so when we moved to 11, we had to add another digit
@@ -689,8 +689,9 @@ Patch1001: fips-%{featurever}u-%{fipsver}.patch
 # OpenJDK patches which missed last update
 #
 #############################################
-
-# Currently empty
+# JDK-8372534: Update Libpng to 1.6.51
+# Integrated in 25.0.3
+Patch2001: jdk8372534-libpng-1.6.51.patch
 
 #############################################
 #
@@ -783,7 +784,7 @@ Provides: bundled(lcms2) = 2.17.0
 # Version in src/java.desktop/share/native/libjavajpeg/jpeglib.h
 Provides: bundled(libjpeg) = 6b
 # Version in src/java.desktop/share/native/libsplashscreen/libpng/png.h
-Provides: bundled(libpng) = 1.6.47
+Provides: bundled(libpng) = 1.6.51
 # Version in src/java.base/share/native/libzip/zlib/zlib.h
 Provides: bundled(zlib) = 1.3.1
 # We link statically against libstdc++ to increase portability
@@ -1004,6 +1005,8 @@ sh %{SOURCE12} %{top_level_dir_name}
 pushd %{top_level_dir_name}
 # Add crypto policy and FIPS support
 %patch -P1001 -p1
+# Add libpng update ahead of 25.0.3
+%patch -P2001 -p1
 popd # openjdk
 
 echo "Generating %{alt_java_name} man page"
@@ -1723,6 +1726,11 @@ $JAVA_HOME/bin/java -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -versi
   $JAVA_HOME/bin/java -Djava.locale.providers=CLDR $(echo $(basename %{SOURCE18})|sed "s|\.java||") CLDR
 %endif
 
+  # Check blocked.certs is valid (OPENJDK-4362)
+  jtreg_test=$(pwd)/%{top_level_dir_name}/test/jdk/sun/security/lib/CheckBlockedCerts.java
+  jtreg_dir=$(dirname ${jtreg_test})
+  $JAVA_HOME/bin/java --add-exports java.base/sun.security.util=ALL-UNNAMED -Dtest.src=${jtreg_dir} ${jtreg_test}
+
   # Check src.zip has all sources. See RHBZ#1130490
   unzip -l $JAVA_HOME/lib/src.zip | grep 'sun.misc.Unsafe'
 
@@ -1966,6 +1974,21 @@ done
 %endif
 
 %changelog
+* Mon Jan 12 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.2.0.10-2
+- Add JDK-8372534 libpng 1.6.51 ahead of 25.0.3
+- Bump libpng version to 1.6.51 following JDK-8372534
+- Add CVEs for 25.0.2 to NEWS
+- Correct version and date for this upcoming release in NEWS
+- Related: OPENJDK-4359
+
+* Mon Jan 12 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.2.0.10-1
+- Update to jdk-25.0.2+10 (GA)
+- Update release notes to 25.0.2+10
+- Add test to ensure blocked.certs is valid (OPENJDK-4362)
+- ** This tarball is embargoed until 2026-01-20 @ 1pm PT. **
+- Resolves: OPENJDK-4359
+- Resolves: OPENJDK-4362
+
 * Tue Dec 02 2025 Severin Gehwolf <sgehwolf@redhat.com> - 1:25.0.1.0.8-2
 - Switch from static-libs-image to static-libs-graal-image to avoid large unneeded libjvm.a
 - Resolves: OPENJDK-4197
