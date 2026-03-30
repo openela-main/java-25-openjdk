@@ -322,9 +322,9 @@
 # Define IcedTea version used for SystemTap tapsets and desktop file
 %global icedteaver      6.0.0pre00-c848b93a8598
 # Define current Git revision for the crypto policy & FIPS support patches
-%global fipsver df044414ef4
+%global fipsver e55ada9353e
 # Define nssadapter variables
-%global nssadapter_version 0.1.0
+%global nssadapter_version 0.1.1
 %global nssadapter_name nssadapter-%{nssadapter_version}
 # Define whether the crypto policy is expected to be active when testing
 %global crypto_policy_active true
@@ -349,9 +349,9 @@
 %global top_level_dir_name   %{vcstag}
 %global top_level_dir_name_backup %{top_level_dir_name}-backup
 %global buildver        10
-%global rpmrelease      1
+%global rpmrelease      3
 # Settings used by the portable build
-%global portablerelease 2
+%global portablerelease 3
 # Portable suffix differs between RHEL and CentOS
 %if 0%{?centos} == 0
 %global portablerhel %{?pkgos:7_9}%{!?pkgos:8}
@@ -1371,37 +1371,9 @@ Source32: create-redhat-properties-files.bash
 # as follows: git diff %%{vcstag} src make test > fips-25u-$(git show -s --format=%h HEAD).patch
 # Diff is limited to src and make subdirectories to exclude .github changes
 # Fixes currently included:
-# PR3183, RH1340845: Follow system wide crypto policy
-# PR3695: Allow use of system crypto policy to be disabled by the user
-# RH1655466: Support RHEL FIPS mode using SunPKCS11 provider
-# RH1818909: No ciphersuites availale for SSLSocket in FIPS mode
-# RH1860986: Disable TLSv1.3 with the NSS-FIPS provider until PKCS#11 v3.0 support is available
-# RH1915071: Always initialise JavaSecuritySystemConfiguratorAccess
-# RH1929465: Improve system FIPS detection
-# RH1995150: Disable non-FIPS crypto in SUN and SunEC security providers
-# RH1996182: Login to the NSS software token in FIPS mode
-# RH1991003: Allow plain key import unless com.redhat.fips.plainKeySupport is set to false
-# RH2021263: Resolve outstanding FIPS issues
-# RH2052819: Fix FIPS reliance on crypto policies
-# RH2052829: Detect NSS at Runtime for FIPS detection
-# RH2052070: Enable AlgorithmParameters and AlgorithmParameterGenerator services in FIPS mode
-# RH2023467: Enable FIPS keys export
-# RH2094027: SunEC runtime permission for FIPS
-# RH2036462: sun.security.pkcs11.wrapper.PKCS11.getInstance breakage
-# RH2090378: Revert to disabling system security properties and FIPS mode support together
-# RH2104724: Avoid import/export of DH private keys
-# RH2092507: P11Key.getEncoded does not work for DH keys in FIPS mode
-# Build the systemconf library on all platforms
-# RH2048582: Support PKCS#12 keystores [now part of JDK-8301553 upstream]
-# RH2020290: Support TLS 1.3 in FIPS mode
-# Add nss.fips.cfg support to OpenJDK tree
-# RH2117972: Extend the support for NSS DBs (PKCS11) in FIPS mode
-# Remove forgotten dead code from RH2020290 and RH2104724
-# OJ1357: Fix issue on FIPS with a SecurityManager in place
-# RH2134669: Add missing attributes when registering services in FIPS mode.
-# test/jdk/sun/security/pkcs11/fips/VerifyMissingAttributes.java: fixed jtreg main class
-# RH1940064: Enable XML Signature provider in FIPS mode
-# RH2173781: Avoid calling C_GetInfo() too early, before cryptoki is initialized [now part of JDK-8301553 upstream]
+# OPENJDK-2108: Internal __redhat_fips__ property
+# OPENJDK-2123: Algorithms lockdown
+# OPENJDK-4559: Red Hat Build of OpenJDK 25 should not restrict all the providers in FIPS
 Patch1001: fips-%{featurever}u-%{fipsver}.patch
 
 #############################################
@@ -1420,6 +1392,15 @@ Patch1001: fips-%{featurever}u-%{fipsver}.patch
 # JDK-8372534: Update Libpng to 1.6.51
 # Integrated in 25.0.3
 Patch2001: jdk8372534-libpng-1.6.51.patch
+# JDK-8375063: Update Libpng to 1.6.54
+# Integrated in 25.0.3
+Patch2002: jdk8375063-libpng-1.6.54.patch
+# JDK-8375057: Update HarfBuzz to 12.3.2
+# Integrated in 25.0.3
+Patch2003: jdk8375057-harfbuzz-12.3.2.patch
+# JDK-8377526: Update Libpng to 1.6.55
+# Integrated in 25.0.3
+Patch2004: jdk8377526-libpng-1.6.55.patch
 
 #############################################
 #
@@ -1434,7 +1415,8 @@ Patch2001: jdk8372534-libpng-1.6.51.patch
 # NSS adapter patches
 #
 #############################################
-Patch3001: nssadapter-ldflags.patch
+
+# Currently empty
 
 BuildRequires: autoconf
 BuildRequires: automake
@@ -1511,13 +1493,13 @@ Provides: bundled(freetype) = 2.13.3
 # Version in src/java.desktop/share/native/libsplashscreen/giflib/gif_lib.h
 Provides: bundled(giflib) = 5.2.2
 # Version in src/java.desktop/share/native/libharfbuzz/hb-version.h
-Provides: bundled(harfbuzz) = 10.4.0
+Provides: bundled(harfbuzz) = 12.3.2
 # Version in src/java.desktop/share/native/liblcms/lcms2.h
 Provides: bundled(lcms2) = 2.17.0
 # Version in src/java.desktop/share/native/libjavajpeg/jpeglib.h
 Provides: bundled(libjpeg) = 6b
 # Version in src/java.desktop/share/native/libsplashscreen/libpng/png.h
-Provides: bundled(libpng) = 1.6.51
+Provides: bundled(libpng) = 1.6.55
 # Version in src/java.base/share/native/libzip/zlib/zlib.h
 Provides: bundled(zlib) = 1.3.1
 %endif
@@ -1953,13 +1935,16 @@ sh %{SOURCE12} %{top_level_dir_name}
 pushd %{top_level_dir_name}
 # Add crypto policy and FIPS support
 %patch -P1001 -p1
-# Add libpng update ahead of 25.0.3
+# Add libpng & harfbuzz updates ahead of 25.0.3
 %patch -P2001 -p1
+%patch -P2002 -p1
+%patch -P2003 -p1
+%patch -P2004 -p1
 popd # openjdk
 
 # Patch NSS adapter
 pushd %{nssadapter_name}
-%patch -P3001 -p1
+# Nothing to do
 popd # nssadapter
 
 # The OpenJDK version file includes the current
@@ -2629,6 +2614,40 @@ exit 0
 %endif
 
 %changelog
+* Wed Mar 11 2026 Thomas Fitzsimmons <fitzsim@redhat.com> - 1:25.0.2.0.10-3
+- Disable abidiff inspection in rpminspect.yaml to avoid an out-of-memory error on the CentOS test farm
+- See: https://docs.testing-farm.io/Testing%20Farm/0.1/errors.html#TFE-1
+- Resolves: RHEL-149786
+
+* Tue Mar 03 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.2.0.10-3
+- Update FIPS patch to e55ada9353e to include the fix for the too restrictive provider lockdown
+- Fix FIPS issue list to represent the new 25u version
+- Add JDK-8375063 libpng 1.6.54 ahead of 25.0.3
+- Add JDK-8375057 harfbuzz 12.3.2 ahead of 25.0.3
+- Add JDK-8377526 libpng 1.6.55 ahead of 25.0.3
+- Bump libpng version to 1.6.55 following JDK-8375063 & JDK-8377526
+- Bump harfbuzz version to 12.3.2 following JDK-8375057
+- Bump nssadapter version to bring in shared PKCS11 session fix
+- Drop LDFLAGS nssadapter patch which is now upstream in 0.1.1
+- Add tagging scripts with signature checks and gating handling
+- Update tagged versions to include 9.8.0-z, 9.9.0, 10.2-z & 10.3.
+- Add gating scripts to simplify obtaining results and waiving issues
+- Sync the copy of the portable specfile with the latest update
+- Resolves: RHEL-155001
+- Resolves: RHEL-147354
+- Resolves: RHEL-148410
+- Resolves: RHEL-148997
+- Resolves: RHEL-155047
+- Resolves: RHEL-155330
+- Resolves: RHEL-156036
+- Resolves: RHEL-156040
+
+* Wed Jan 28 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.2.0.10-2
+- Bump rpmrelease for CentOS build
+- Related: RHEL-139577
+- Related: RHEL-142856
+- Related: RHEL-142808
+
 * Wed Jan 21 2026 Jiri Vanek <jvanek@redhat.com> - 1:25.0.2.0.10-1
 - Execute create-redhat-properties-files.bash with '-e' to exit on failure
 - Related: RHEL-142856
@@ -2644,6 +2663,8 @@ exit 0
 - Sync the copy of the portable specfile with the latest update
 - ** This tarball is embargoed until 2026-01-20 @ 1pm PT. **
 - Resolves: RHEL-139577
+- Resolves: RHEL-143373
+- Resolves: RHEL-143368
 - Resolves: RHEL-142856
 - Resolves: RHEL-142808
 
