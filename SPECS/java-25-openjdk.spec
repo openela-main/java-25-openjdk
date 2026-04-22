@@ -286,7 +286,7 @@
 # New Version-String scheme-style defines
 %global featurever 25
 %global interimver 0
-%global updatever 2
+%global updatever 3
 %global patchver 0
 # We don't add any LTS designator for STS packages (Fedora and EPEL).
 # We need to explicitly exclude EPEL as it would have the %%{rhel} macro defined.
@@ -321,8 +321,8 @@
 
 # Define IcedTea version used for SystemTap tapsets and desktop file
 %global icedteaver      6.0.0pre00-c848b93a8598
-# Define current Git revision for the crypto policy & FIPS support patches
-%global fipsver e55ada9353e
+# Define current Git revision for the FIPS support patches
+%global fipsver 57722aab802
 # Define nssadapter variables
 %global nssadapter_version 0.1.1
 %global nssadapter_name nssadapter-%{nssadapter_version}
@@ -348,10 +348,10 @@
 %global origin_nice     OpenJDK
 %global top_level_dir_name   %{vcstag}
 %global top_level_dir_name_backup %{top_level_dir_name}-backup
-%global buildver        10
-%global rpmrelease      3
+%global buildver        9
+%global rpmrelease      1
 # Settings used by the portable build
-%global portablerelease 3
+%global portablerelease 1
 # Portable suffix differs between RHEL and CentOS
 %if 0%{?centos} == 0
 %global portablerhel %{?pkgos:7_9}%{!?pkgos:8}
@@ -1389,18 +1389,9 @@ Patch1001: fips-%{featurever}u-%{fipsver}.patch
 # OpenJDK patches which missed last update
 #
 #############################################
-# JDK-8372534: Update Libpng to 1.6.51
-# Integrated in 25.0.3
-Patch2001: jdk8372534-libpng-1.6.51.patch
-# JDK-8375063: Update Libpng to 1.6.54
-# Integrated in 25.0.3
-Patch2002: jdk8375063-libpng-1.6.54.patch
-# JDK-8375057: Update HarfBuzz to 12.3.2
-# Integrated in 25.0.3
-Patch2003: jdk8375057-harfbuzz-12.3.2.patch
-# JDK-8377526: Update Libpng to 1.6.55
-# Integrated in 25.0.3
-Patch2004: jdk8377526-libpng-1.6.55.patch
+
+# JDK-8375294: (fs) Files.copy can fail with EOPNOTSUPP when copy_file_range not supported
+Patch2001: jdk8375294-handle-EOPNOTSUPP-in-copying.patch
 
 #############################################
 #
@@ -1489,9 +1480,9 @@ BuildRequires: libpng-devel
 BuildRequires: zlib-devel
 %else
 # Version in src/java.desktop/share/legal/freetype.md
-Provides: bundled(freetype) = 2.13.3
+Provides: bundled(freetype) = 2.14.2
 # Version in src/java.desktop/share/native/libsplashscreen/giflib/gif_lib.h
-Provides: bundled(giflib) = 5.2.2
+Provides: bundled(giflib) = 6.1.2
 # Version in src/java.desktop/share/native/libharfbuzz/hb-version.h
 Provides: bundled(harfbuzz) = 12.3.2
 # Version in src/java.desktop/share/native/liblcms/lcms2.h
@@ -1499,9 +1490,9 @@ Provides: bundled(lcms2) = 2.17.0
 # Version in src/java.desktop/share/native/libjavajpeg/jpeglib.h
 Provides: bundled(libjpeg) = 6b
 # Version in src/java.desktop/share/native/libsplashscreen/libpng/png.h
-Provides: bundled(libpng) = 1.6.55
+Provides: bundled(libpng) = 1.6.57
 # Version in src/java.base/share/native/libzip/zlib/zlib.h
-Provides: bundled(zlib) = 1.3.1
+Provides: bundled(zlib) = 1.3.2
 %endif
 %ifarch %{sleef_arches}
 # SLEEF is always bundled
@@ -1935,11 +1926,8 @@ sh %{SOURCE12} %{top_level_dir_name}
 pushd %{top_level_dir_name}
 # Add crypto policy and FIPS support
 %patch -P1001 -p1
-# Add libpng & harfbuzz updates ahead of 25.0.3
+# Add EOPNOTSUPP patch
 %patch -P2001 -p1
-%patch -P2002 -p1
-%patch -P2003 -p1
-%patch -P2004 -p1
 popd # openjdk
 
 # Patch NSS adapter
@@ -2614,6 +2602,26 @@ exit 0
 %endif
 
 %changelog
+* Sat Apr 18 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.3.0.9-1
+- Update to jdk-25.0.3+9 (GA)
+- Update release notes to 25.0.3+9
+- Update FIPS patch to 57722aab802 version synced with 25.0.3+8
+- Drop local libpng patches now JDK-8372534, JDK-8375063 & JDK-8377526 are included upstream
+- Drop local HarfBuzz patch now JDK-8375057 is included upstream
+- Bump freetype version to 2.14.2 following JDK-8373290 & JDK-8379158
+- Bump giflib version to 6.1.2 following JDK-8379256 & JDK-8380078
+- Bump libpng version to 1.6.57 following JDK-8380959 & JDK-8382047
+- Bump zlib version to 1.3.2 following JDK-8378631
+- Add JDK-8375294 EOPNOTSUPP patch ahead of 25.0.4
+- Sync the copy of the portable specfile with the latest update
+- ** This tarball is embargoed until 2026-04-21 @ 1pm PT. **
+- Resolves: RHEL-169619
+- Resolves: RHEL-157142
+- Resolves: RHEL-157154
+- Resolves: RHEL-161306
+- Resolves: RHEL-161455
+- Resolves: RHEL-169615
+
 * Wed Mar 11 2026 Thomas Fitzsimmons <fitzsim@redhat.com> - 1:25.0.2.0.10-3
 - Disable abidiff inspection in rpminspect.yaml to avoid an out-of-memory error on the CentOS test farm
 - See: https://docs.testing-farm.io/Testing%20Farm/0.1/errors.html#TFE-1
