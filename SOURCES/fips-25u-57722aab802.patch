@@ -2,7 +2,7 @@ diff --git a/src/java.base/share/classes/java/security/Provider.java b/src/java.
 index de2845fb550..60eeab678ca 100644
 --- a/src/java.base/share/classes/java/security/Provider.java
 +++ b/src/java.base/share/classes/java/security/Provider.java
-@@ -1203,6 +1203,34 @@ public Service getService(String type, String algorithm) {
+@@ -1203,6 +1203,34 @@ public Set<Service> getServices() {
          return serviceSet;
      }
  
