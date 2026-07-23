@@ -3,6 +3,124 @@
 # it and then adjust portablerelease and portablesuffix
 # to match the new portable.
 
+# New Version-String scheme-style defines
+%global featurever 25
+%global interimver 0
+%global updatever 4
+%global patchver 0
+%global buildver 7
+%global portablerelease 1
+%global rpmrelease 1
+
+# Define IcedTea version used for SystemTap tapsets and desktop file
+%global icedteaver      6.0.0pre00-c848b93a8598
+# Define current Git revision for the FIPS support patches
+%global fipsver 57722aab802
+# Define nssadapter variables
+%global nssadapter_version 0.1.1
+%global nssadapter_name nssadapter-%{nssadapter_version}
+# Define whether the crypto policy is expected to be active when testing
+%global crypto_policy_active true
+# Define JDK versions
+%global newjavaver %{featurever}.%{interimver}.%{updatever}.%{patchver}
+%global javaver         %{featurever}
+# Strip up to 6 trailing zeros in newjavaver, as the JDK does, to get the correct version used in filenames
+%global filever %(svn=%{newjavaver}; for i in 1 2 3 4 5 6 ; do svn=${svn%%.0} ; done; echo ${svn})
+# The tag used to create the OpenJDK tarball
+%global vcstag jdk-%{filever}+%{buildver}%{?tagsuffix:-%{tagsuffix}}
+
+# Standard JPackage naming and versioning defines
+%global origin          openjdk
+%global origin_nice     OpenJDK
+%global top_level_dir_name   %{vcstag}
+%global top_level_dir_name_backup %{top_level_dir_name}-backup
+
+# Define milestone (EA for pre-releases, GA for releases)
+# Release will be (where N is usually a number starting at 1):
+# - 0.N.ea<dist> for EA releases,
+# - N<dist> for GA releases
+%global is_ga           1
+%if %{is_ga}
+%global build_type GA
+%global ea_designator ""
+%global ea_designator_zip %{nil}
+%global extraver %{nil}
+%global eaprefix %{nil}
+%else
+%global build_type EA
+%global ea_designator ea
+%global ea_designator_zip -%{ea_designator}
+%global extraver .%{ea_designator}
+%global eaprefix 0.
+%endif
+
+%global compatiblename  java-%{javaver}-%{origin}
+
+Name:    %{compatiblename}
+Version: %{newjavaver}.%{buildver}
+Release: %{?eaprefix}%{portablerelease}.%{rpmrelease}%{?extraver}%{?dist}
+
+%global fullversion     %{compatiblename}-%{version}-%{release}
+
+# java-1.5.0-ibm from jpackage.org set Epoch to 1 for unknown reasons
+# and this change was brought into RHEL-4. java-1.5.0-ibm packages
+# also included the epoch in their virtual provides. This created a
+# situation where in-the-wild java-1.5.0-ibm packages provided "java =
+# 1:1.5.0". In RPM terms, "1.6.0 < 1:1.5.0" since 1.6.0 is
+# interpreted as 0:1.6.0. So the "java >= 1.6.0" requirement would be
+# satisfied by the 1:1.5.0 packages. Thus we need to set the epoch in
+# JDK package >= 1.6.0 to 1, and packages referring to JDK virtual
+# provides >= 1.6.0 must specify the epoch, "java >= 1:1.6.0".
+Epoch:   1
+Summary: %{origin_nice} %{featurever} Runtime Environment
+# Groups are only used up to RHEL 8 and on Fedora versions prior to F30
+%if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
+Group:   Development/Languages
+%endif
+
+# HotSpot code is licensed under GPLv2
+# JDK library code is licensed under GPLv2 with the Classpath exception
+# The Apache license is used in code taken from Apache projects (primarily xalan & xerces)
+# DOM levels 2 & 3 and the XML digital signature schemas are licensed under the W3C Software License
+# The JSR166 concurrency code is in the public domain
+# The BSD and MIT licenses are used for a number of third-party libraries (see ADDITIONAL_LICENSE_INFO)
+# The OpenJDK source tree includes:
+# - JPEG library (IJG), zlib & libpng (zlib), giflib (MIT), harfbuzz (ISC),
+# - freetype (FTL), jline (BSD) and LCMS (MIT)
+# - jquery (MIT), jdk.crypto.cryptoki PKCS 11 wrapper (RSA)
+# - public_suffix_list.dat from publicsuffix.org (MPLv2.0)
+# The test code includes copies of NSS under the Mozilla Public License v2.0
+# The PCSClite headers are under a BSD with advertising license
+# The elliptic curve cryptography (ECC) source code is licensed under the LGPLv2.1 or any later version
+License:  ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv2 and GPLv2 with exceptions and IJG and LGPLv2+ and MIT and MPLv2.0 and Public Domain and W3C and zlib and ISC and FTL and RSA
+URL:      http://openjdk.java.net/
+
+# Define the OS the portable JDK is built on
+# This is undefined for CentOS & openjdk-portable-rhel-8 builds and
+# equals 'rhel7' for openjdk-portable-rhel-7 builds
+%if 0
+%global pkgos rhel7
+%endif
+# Define the root name of the portable packages
+%global pkgnameroot java-%{featurever}-%{origin}-portable%{?pkgos:-%{pkgos}}
+# Release field for the portable build
+# The rpmrelease field is always zero for portables
+%global prelease %{?eaprefix}%{portablerelease}.0%{?extraver}
+# Portable suffix differs between RHEL and CentOS
+%if 0%{?centos} == 0
+%global portablerhel %{?pkgos:7_9}%{!?pkgos:8}
+%else
+%global portablerhel 9
+%endif
+%global portablebuilddir /builddir/build/BUILD
+%global portablesuffix el%{portablerhel}
+# Check if pandoc was available to generate docs (including man pages)
+%if 0%{?portablerhel} == 8
+%global pandoc_available 1
+%else
+%global pandoc_available 0
+%endif
+
 # RPM conditionals so as to be able to dynamically produce
 # slowdebug/release builds. See:
 # http://rpm.org/user_doc/conditional_builds.html
@@ -87,19 +205,20 @@
 %global normal_build %{nil}
 %endif
 
-# We have hardcoded list of files, which  is appearing in alternatives, and in files
-# in alternatives those are slaves and master, very often triplicated by man pages
-# in files all masters and slaves are ghosted
-# the ghosts are here to allow installation via query like `dnf install /usr/bin/java`
-# you can list those files, with appropriate sections: cat *.spec | grep -e --install -e --slave -e post_ -e alternatives
+# We have a hardcoded list of files, which appears in alternatives and in files
+# In alternatives, those are slaves and master, very often triplicated by man pages
+# In files, all masters and slaves are ghosted
+# The ghosts are here to allow installation via query like `dnf install /usr/bin/java`
+# You can list those files, with appropriate sections: cat *.spec | grep -e --install -e --slave -e post_ -e alternatives
 # TODO - fix those hardcoded lists via single list
-# Those files must *NOT* be ghosted for *slowdebug* packages
+# Those files must *NOT* be ghosted for *debug* packages
 # FIXME - if you are moving jshell or jlink or similar, always modify all three sections
-# you can check via headless and devels:
+# You can check via headless and devels:
 #    rpm -ql --noghost java-11-openjdk-headless-11.0.1.13-8.fc29.x86_64.rpm  | grep bin
 # == rpm -ql           java-11-openjdk-headless-slowdebug-11.0.1.13-8.fc29.x86_64.rpm  | grep bin
 # != rpm -ql           java-11-openjdk-headless-11.0.1.13-8.fc29.x86_64.rpm  | grep bin
-# similarly for other %%{_jvmdir}/{jre,java} and %%{_javadocdir}/{java,java-zip}
+# and similarly for other packages.
+
 %define is_release_build() %( if [ "%{?1}" == "%{debug_suffix_unquoted}" -o "%{?1}" == "%{fastdebug_suffix_unquoted}" ]; then echo "0" ; else echo "1"; fi )
 
 # Indicates whether this is the default JDK on this version of RHEL
@@ -283,13 +402,8 @@
 %global with_systemtap 0
 %endif
 
-# New Version-String scheme-style defines
-%global featurever 25
-%global interimver 0
-%global updatever 3
-%global patchver 0
 # We don't add any LTS designator for STS packages (Fedora and EPEL).
-# We need to explicitly exclude EPEL as it would have the %%{rhel} macro defined.
+# We need to explicitly exclude EPEL as it has the rhel macro defined.
 %if 0%{?rhel} && !0%{?epel}
   %global lts_designator "LTS"
   %global lts_designator_zip -%{lts_designator}
@@ -301,7 +415,8 @@
 # Define vendor information used by OpenJDK
 %global oj_vendor Red Hat, Inc.
 %global oj_vendor_url https://www.redhat.com/
-# Define what url should JVM offer in case of a crash report
+
+# Define what url the JVM should offer in case of a crash report
 # order may be important, epel may have rhel declared
 %if 0%{?epel}
 %global oj_vendor_bug_url  https://bugzilla.redhat.com/enter_bug.cgi?product=Fedora%20EPEL&component=%{name}&version=epel%{epel}
@@ -319,54 +434,6 @@
 %endif
 %global oj_vendor_version (Red_Hat-%{version}-%{portablerelease})
 
-# Define IcedTea version used for SystemTap tapsets and desktop file
-%global icedteaver      6.0.0pre00-c848b93a8598
-# Define current Git revision for the FIPS support patches
-%global fipsver 57722aab802
-# Define nssadapter variables
-%global nssadapter_version 0.1.1
-%global nssadapter_name nssadapter-%{nssadapter_version}
-# Define whether the crypto policy is expected to be active when testing
-%global crypto_policy_active true
-# Define JDK versions
-%global newjavaver %{featurever}.%{interimver}.%{updatever}.%{patchver}
-%global javaver         %{featurever}
-# Strip up to 6 trailing zeros in newjavaver, as the JDK does, to get the correct version used in filenames
-%global filever %(svn=%{newjavaver}; for i in 1 2 3 4 5 6 ; do svn=${svn%%.0} ; done; echo ${svn})
-# The tag used to create the OpenJDK tarball
-%global vcstag jdk-%{filever}+%{buildver}%{?tagsuffix:-%{tagsuffix}}
-
-# Define the OS the portable JDK is built on
-# This is undefined for CentOS & openjdk-portable-rhel-8 builds and
-# equals 'rhel7' for openjdk-portable-rhel-7 builds
-%if 0
-%global pkgos rhel7
-%endif
-
-# Standard JPackage naming and versioning defines
-%global origin          openjdk
-%global origin_nice     OpenJDK
-%global top_level_dir_name   %{vcstag}
-%global top_level_dir_name_backup %{top_level_dir_name}-backup
-%global buildver        9
-%global rpmrelease      1
-# Settings used by the portable build
-%global portablerelease 1
-# Portable suffix differs between RHEL and CentOS
-%if 0%{?centos} == 0
-%global portablerhel %{?pkgos:7_9}%{!?pkgos:8}
-%else
-%global portablerhel 9
-%endif
-%global portablebuilddir /builddir/build/BUILD
-%global portablesuffix el%{portablerhel}
-# Check if pandoc was available to generate docs (including man pages)
-%if 0%{?portablerhel} == 8
-%global pandoc_available 1
-%else
-%global pandoc_available 0
-%endif
-
 # Priority must be 8 digits in total; up to openjdk 1.8, we were using 18..... so when we moved to 11, we had to add another digit
 %if %is_system_jdk
 # Using 10 digits may overflow the int used for priority, so we combine the patch and build versions
@@ -380,29 +447,6 @@
 %global priority %( printf '%08d' 1 )
 %endif
 
-# Define milestone (EA for pre-releases, GA for releases)
-# Release will be (where N is usually a number starting at 1):
-# - 0.N%%{?extraver}%%{?dist} for EA releases,
-# - N%%{?extraver}{?dist} for GA releases
-%global is_ga           1
-%if %{is_ga}
-%global build_type GA
-%global ea_designator ""
-%global ea_designator_zip %{nil}
-%global extraver %{nil}
-%global eaprefix %{nil}
-%else
-%global build_type EA
-%global ea_designator ea
-%global ea_designator_zip -%{ea_designator}
-%global extraver .%{ea_designator}
-%global eaprefix 0.
-%endif
-
-# parametrized macros are order-sensitive
-%global compatiblename  java-%{featurever}-%{origin}
-%global fullversion     %{compatiblename}-%{version}-%{release}
-# output dir stub
 %define installoutputdir() %{expand:install/jdk%{featurever}.install%{?1}}
 # we can copy the javadoc to not arched dir, or make it not noarch
 %define uniquejavadocdir() %{expand:%{compatiblename}%{?1}}
@@ -448,7 +492,7 @@
 %global rpm_state_dir %{_localstatedir}/lib/rpm-state/
 
 # For flatpack builds hard-code /usr/sbin/alternatives,
-# otherwise use %%{_sbindir} relative path.
+# otherwise use _sbindir relative path.
 %if 0%{?flatpak}
 %global alternatives_requires /usr/sbin/alternatives
 %else
@@ -1121,8 +1165,8 @@ Requires: ca-certificates
 # Require javapackages-filesystem for ownership of /usr/lib/jvm/ and macros
 Requires: javapackages-filesystem
 # Require zone-info data provided by tzdata-java sub-package
-# 2026a required as of JDK-8379035
-Requires: tzdata-java >= 2026a
+# 2026b required as of JDK-8383175
+Requires: tzdata-java >= 2026b
 # for support of kernel stream control
 # libsctp.so.1 is being `dlopen`ed on demand
 Requires: lksctp-tools%{?_isa}
@@ -1243,50 +1287,9 @@ Provides: java-%{origin}-src%{?1} = %{epoch}:%{version}-%{release}
 
 # Prevent brp-java-repack-jars from being run
 %global __jar_repack 0
-# Define the root name of the portable packages
-%global pkgnameroot java-%{featurever}-%{origin}-portable%{?pkgos:-%{pkgos}}
 
 # Define the architectures on which we build
 ExclusiveArch: %{aarch64} %{ppc64le} s390x x86_64 riscv64
-
-Name:    java-%{javaver}-%{origin}
-Version: %{newjavaver}.%{buildver}
-Release: %{?eaprefix}%{rpmrelease}%{?extraver}%{?dist}
-# Equivalent for the portable build
-%global prelease %{?eaprefix}%{portablerelease}%{?extraver}
-# java-1.5.0-ibm from jpackage.org set Epoch to 1 for unknown reasons
-# and this change was brought into RHEL-4. java-1.5.0-ibm packages
-# also included the epoch in their virtual provides. This created a
-# situation where in-the-wild java-1.5.0-ibm packages provided "java =
-# 1:1.5.0". In RPM terms, "1.6.0 < 1:1.5.0" since 1.6.0 is
-# interpreted as 0:1.6.0. So the "java >= 1.6.0" requirement would be
-# satisfied by the 1:1.5.0 packages. Thus we need to set the epoch in
-# JDK package >= 1.6.0 to 1, and packages referring to JDK virtual
-# provides >= 1.6.0 must specify the epoch, "java >= 1:1.6.0".
-
-Epoch:   1
-Summary: %{origin_nice} %{featurever} Runtime Environment
-# Groups are only used up to RHEL 8 and on Fedora versions prior to F30
-%if (0%{?rhel} > 0 && 0%{?rhel} <= 8) || (0%{?fedora} >= 0 && 0%{?fedora} < 30)
-Group:   Development/Languages
-%endif
-
-# HotSpot code is licensed under GPLv2
-# JDK library code is licensed under GPLv2 with the Classpath exception
-# The Apache license is used in code taken from Apache projects (primarily xalan & xerces)
-# DOM levels 2 & 3 and the XML digital signature schemas are licensed under the W3C Software License
-# The JSR166 concurrency code is in the public domain
-# The BSD and MIT licenses are used for a number of third-party libraries (see ADDITIONAL_LICENSE_INFO)
-# The OpenJDK source tree includes:
-# - JPEG library (IJG), zlib & libpng (zlib), giflib (MIT), harfbuzz (ISC),
-# - freetype (FTL), jline (BSD) and LCMS (MIT)
-# - jquery (MIT), jdk.crypto.cryptoki PKCS 11 wrapper (RSA)
-# - public_suffix_list.dat from publicsuffix.org (MPLv2.0)
-# The test code includes copies of NSS under the Mozilla Public License v2.0
-# The PCSClite headers are under a BSD with advertising license
-# The elliptic curve cryptography (ECC) source code is licensed under the LGPLv2.1 or any later version
-License:  ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv2 and GPLv2 with exceptions and IJG and LGPLv2+ and MIT and MPLv2.0 and Public Domain and W3C and zlib and ISC and FTL and RSA
-URL:      http://openjdk.java.net/
 
 # The source tarball, generated using generate_source_tarball.sh
 Source0: https://openjdk-sources.osci.io/openjdk%{featurever}/open%{vcstag}%{ea_designator_zip}.tar.xz
@@ -1367,9 +1370,11 @@ Source32: create-redhat-properties-files.bash
 ############################################
 
 # Crypto policy and FIPS support patches
+
 # Patch is generated from the fips-25u tree at https://github.com/rh-openjdk/jdk/tree/fips-25u
-# as follows: git diff %%{vcstag} src make test > fips-25u-$(git show -s --format=%h HEAD).patch
+# as follows: git diff <vcstag> src make test > fips-25u-$(git show -s --format=%h HEAD).patch
 # Diff is limited to src and make subdirectories to exclude .github changes
+
 # Fixes currently included:
 # OPENJDK-2108: Internal __redhat_fips__ property
 # OPENJDK-2123: Algorithms lockdown
@@ -1390,8 +1395,10 @@ Patch1001: fips-%{featurever}u-%{fipsver}.patch
 #
 #############################################
 
-# JDK-8375294: (fs) Files.copy can fail with EOPNOTSUPP when copy_file_range not supported
-Patch2001: jdk8375294-handle-EOPNOTSUPP-in-copying.patch
+# JDK-8347901: C2 should remove unused leaf / pure runtime calls
+Patch2002: jdk8347901-c2_unused_leaf_removal.patch
+# JDK-83787313: C2: performance regression due to missing constant folding for Math.pow()
+Patch2003: jdk8378713-c2_missing_pow_constant_folding.patch
 
 #############################################
 #
@@ -1456,8 +1463,8 @@ BuildRequires: %{pkgnameroot}-misc = %{epoch}:%{version}-%{prelease}.%{portables
 %ifarch %{zero_arches}
 BuildRequires: libffi-devel
 %endif
-# 2026a required as of JDK-8379035
-BuildRequires: tzdata-java >= 2026a
+# 2026b required as of JDK-8383175
+BuildRequires: tzdata-java >= 2026b
 # Earlier versions have a bug in tree vectorization on PPC
 BuildRequires: gcc >= 4.8.3-8
 
@@ -1480,17 +1487,17 @@ BuildRequires: libpng-devel
 BuildRequires: zlib-devel
 %else
 # Version in src/java.desktop/share/legal/freetype.md
-Provides: bundled(freetype) = 2.14.2
+Provides: bundled(freetype) = 2.14.3
 # Version in src/java.desktop/share/native/libsplashscreen/giflib/gif_lib.h
-Provides: bundled(giflib) = 6.1.2
+Provides: bundled(giflib) = 6.1.3
 # Version in src/java.desktop/share/native/libharfbuzz/hb-version.h
-Provides: bundled(harfbuzz) = 12.3.2
+Provides: bundled(harfbuzz) = 14.2.0
 # Version in src/java.desktop/share/native/liblcms/lcms2.h
-Provides: bundled(lcms2) = 2.17.0
+Provides: bundled(lcms2) = 2.19.1
 # Version in src/java.desktop/share/native/libjavajpeg/jpeglib.h
 Provides: bundled(libjpeg) = 6b
 # Version in src/java.desktop/share/native/libsplashscreen/libpng/png.h
-Provides: bundled(libpng) = 1.6.57
+Provides: bundled(libpng) = 1.6.58
 # Version in src/java.base/share/native/libzip/zlib/zlib.h
 Provides: bundled(zlib) = 1.3.2
 %endif
@@ -1910,24 +1917,13 @@ sh %{SOURCE12} %{top_level_dir_name}
 %endif
 
 # Patch the JDK
-# This syntax is deprecated:
-#    %patchN [...]
-# and should be replaced with:
-#    %patch -PN [...]
-# For example:
-#    %patch1001 -p1
-# becomes:
-#    %patch -P1001 -p1
-# The replacement format suggested by recent (circa Fedora 38) RPM
-# deprecation messages:
-#    %patch N [...]
-# is not backward-compatible with prior (circa RHEL-8) versions of
-# rpmbuild.
+
 pushd %{top_level_dir_name}
 # Add crypto policy and FIPS support
 %patch -P1001 -p1
-# Add EOPNOTSUPP patch
-%patch -P2001 -p1
+# Add C2 patches
+%patch -P2002 -p1
+%patch -P2003 -p1
 popd # openjdk
 
 # Patch NSS adapter
@@ -2104,10 +2100,7 @@ $JAVA_HOME/bin/java -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -versi
   # Check translations are available for new timezones (during flatpak builds, the
   # tzdb.dat used by this test is not where the test expects it, so this is
   # disabled for flatpak builds)
-  # Disable test until we are on the latest JDK
-  $JAVA_HOME/bin/javac -d . %{SOURCE18}
-  $JAVA_HOME/bin/java $(echo $(basename %{SOURCE18})|sed "s|\.java||") JRE
-  $JAVA_HOME/bin/java -Djava.locale.providers=CLDR $(echo $(basename %{SOURCE18})|sed "s|\.java||") CLDR
+  $JAVA_HOME/bin/java %{SOURCE18}
 %endif
 
   # Check src.zip has all sources. See RHBZ#1130490
@@ -2602,6 +2595,46 @@ exit 0
 %endif
 
 %changelog
+* Thu Jul 16 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.4.0.7-1.0
+- Update to jdk-25.0.4+7 (GA)
+- Update release notes to 25.0.4+7
+- Bump freetype version to 2.14.3 following JDK-8385390
+- Bump giflib version to 6.1.3 following JDK-8384902
+- Bump HarfBuzz version to 14.2.0 following JDK-8385490
+- Bump lcms2 version to 2.19.1 following JDK-8375065 & JDK-8383354
+- Bump libpng version to 1.6.58 following JDK-8384495
+- Require tzdata 2026b due to upstream inclusion of JDK-8383175
+- Drop local copy of JDK-8375294 EOPNOTSUPP patch
+- Obsolete old RHEL releases (9.7.0-z, 10.1-z)
+- Revert fr_FR and de_DE changes made in d43f0e6186370fdeb0ca2f3594f39783e20eef1c now JDK-8382020 is fixed
+- Simplify TestTranslations run now there is only the CLDR provider and one set of data (JDK-8174269)
+- Make zone string debug output optional in TestTranslations
+- Sync the copy of the portable specfile with the latest update
+- ** This tarball is embargoed until 2026-07-21 @ 1pm PT. **
+- Resolves: RHEL-188883
+- Resolves: RHEL-212294
+- Resolves: RHEL-212296
+
+* Tue Jul 14 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.3.0.9-3.1
+- Cleanup tagging and gating scripts to appease shellcheck:
+- * scripts/builds/build_vanilla.sh: Use an array to handle the varying arguments to rhpkg.
+- * scripts/builds/check_signatures.sh: Quote variable usage.
+- * scripts/builds/waive_issue.sh: Remove redundant 'test "x"' usage.
+- * scripts/builds/waive_leapp_issue.sh: Likewise.
+- * scripts/builds/waive_rpminspect.sh: Likewise.
+- * scripts/builds/waive_usual_rpminspect.sh: Likewise and add missing WORKING_DIR variable.
+- * scripts/builds/waive_usual_tier0.sh: Remove redundant 'test "x"' usage.
+- Remove macro references in comments where possible (%dnl not compatible enough yet)
+- Move version information and core NVR definitions back towards the top of the file
+- Specify portablerelease and rpmrelease (always 0 for portables) in the Release field
+- Add 25u backports of JDK-8347901 & JDK-8378713 C2 performance fixes
+- Sync the copy of the portable specfile with the latest update
+- Related: RHEL-155327
+- Related: RHEL-155339
+- Resolves: RHEL-150977
+- Resolves: RHEL-210972
+- Resolves: RHEL-210993
+
 * Sat Apr 18 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.3.0.9-1
 - Update to jdk-25.0.3+9 (GA)
 - Update release notes to 25.0.3+9
