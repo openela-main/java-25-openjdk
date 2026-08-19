@@ -7,8 +7,8 @@
 %global featurever 25
 %global interimver 0
 %global updatever 4
-%global patchver 0
-%global buildver 7
+%global patchver 1
+%global buildver 1
 %global portablerelease 1
 %global rpmrelease 1
 
@@ -1867,6 +1867,7 @@ The %{origin_nice} %{featurever} cryptography adapter library.
 
 echo "Preparing %{oj_vendor_version}"
 echo "System is RHEL=%{?rhel}%{!?rhel:0}, CentOS=%{?centos}%{!?centos:0}, EPEL=%{?epel}%{!?epel:0}, Fedora=%{?fedora}%{!?fedora:0}"
+echo "Portable suffix is %{?pkgos}%{!?pkgos:unset}"
 
 # Using the echo macro breaks rpmdev-bumpspec, as it parses the first line of stdout :-(
 %if 0%{?stapinstall:1}
@@ -2595,7 +2596,21 @@ exit 0
 %endif
 
 %changelog
-* Thu Jul 16 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.4.0.7-1.0
+* Fri Aug 07 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.4.1.1-1.1
+- Update to jdk-25.0.4.1+1 (GA)
+- Update release notes to 25.0.4.1+1
+- Report pkgos value during build
+- Sync the copy of the portable specfile with the latest update
+- ** This tarball is embargoed until 2026-08-18 @ 1pm PT. **
+- Resolves: RHEL-235632
+
+* Thu Jul 23 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.4.0.7-2.1
+- Add CVEs to NEWS file
+- Update to tarball with final changeset ID
+- Sync the copy of the portable specfile with the latest update
+- Related: RHEL-188880
+
+* Thu Jul 16 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.4.0.7-1.1
 - Update to jdk-25.0.4+7 (GA)
 - Update release notes to 25.0.4+7
 - Bump freetype version to 2.14.3 following JDK-8385390

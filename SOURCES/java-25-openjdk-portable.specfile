@@ -2,8 +2,8 @@
 %global featurever 25
 %global interimver 0
 %global updatever 4
-%global patchver 0
-%global buildver 7
+%global patchver 1
+%global buildver 1
 %global portablerelease 1
 %global rpmrelease 0
 
@@ -25,8 +25,16 @@
 %global top_level_dir_name   %{vcstag}
 %global top_level_dir_name_backup %{top_level_dir_name}-backup
 # Define an optional suffix for the OS this package is built on
-%if 0%{?rhel} == 7
-%global pkgos rhel7
+# The portable package is intended to be built on either RHEL 8
+# or CentOS Stream 9; any other OS will automatically get an
+# appropriate suffix
+%global rhel_buildos 8
+%global centos_buildos 9
+%if 0%{?centos} == 0 && 0%{?rhel} != 0%{rhel_buildos}
+%global pkgos rhel%{?rhel}
+%endif
+%if 0%{?centos} != 0 && 0%{?centos} != 0%{centos_buildos}
+%global pkgos rhel%{?centos}
 %endif
 
 # Define milestone (EA for pre-releases, GA for releases)
@@ -235,7 +243,7 @@ URL:      http://openjdk.java.net/
 # Set of architectures for which we have a devkit
 # Only used on RHEL
 %if 0%{?centos} == 0
-%global devkit_arches %{aarch64} %{ppc64le} riscv64 s390x x86_64
+%global devkit_arches %{aarch64} %{ppc64le} s390x x86_64
 %endif
 
 # By default, we build a slowdebug build during main build on JIT architectures
@@ -539,8 +547,14 @@ URL:      http://openjdk.java.net/
 
 # Define the architectures on which we build
 # On RHEL, this should be the architectures with a devkit
+# The exception is riscv64, which was introduced too recently
+# for a devkit to exist. In that case, we build without devkit
 %if 0%{?centos} == 0
+%if 0%{?rhel} >= 10
+ExclusiveArch: %{devkit_arches} riscv64
+%else
 ExclusiveArch: %{devkit_arches}
+%endif
 %else
 ExclusiveArch: %{aarch64} %{ppc64le} s390x x86_64 riscv64
 %endif
@@ -861,6 +875,7 @@ The %{origin_nice} %{featurever} miscellany.
 # Using the echo macro breaks rpmdev-bumpspec, as it parses the first line of stdout :-(
 echo "Preparing %{oj_vendor_version}"
 echo "System is RHEL=%{?rhel}%{!?rhel:0}, CentOS=%{?centos}%{!?centos:0}, EPEL=%{?epel}%{!?epel:0}, Fedora=%{?fedora}%{!?fedora:0}"
+echo "Portable suffix is %{?pkgos}%{!?pkgos:unset}"
 echo "Build JDK version is %{buildjdkver}, bootstrap JDK package is %{bootjdkpkg}"
 
 %if 0%{?stapinstall:1}
@@ -1879,6 +1894,24 @@ done
 %endif
 
 %changelog
+* Fri Aug 07 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.4.1.1-1.0
+- Update to jdk-25.0.4.1+1 (GA)
+- Update release notes to 25.0.4.1+1
+- Make rhel usage in pkgos optional as it may be undefined
+- Simplify pkgos conditional to work on RHEL 8
+- ** This tarball is embargoed until 2026-08-18 @ 1pm PT. **
+
+* Fri Aug 07 2026 Andrea Bolognani <abologna@redhat.com> - 1:25.0.4.0.7-3.0
+- Automatically set pkgos when necessary
+- Don't attempt to use devkit on riscv64
+- Resolves: OPENJDK-5030
+- Resolves: OPENJDK-5031
+
+* Thu Jul 23 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.4.0.7-2.0
+- Add CVEs to NEWS file
+- Update to tarball with final changeset ID
+- Related: OPENJDK-4865
+
 * Thu Jul 16 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.4.0.7-1.0
 - Update to jdk-25.0.4+7 (GA)
 - Update release notes to 25.0.4+7
