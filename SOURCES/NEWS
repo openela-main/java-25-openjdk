@@ -3,12 +3,39 @@ Key:
 JDK-X  - https://bugs.openjdk.java.net/browse/JDK-X
 CVE-XXXX-YYYY: https://cve.mitre.org/cgi-bin/cvename.cgi?name=XXXX-YYYY
 
+New in release OpenJDK 25.0.4.1 (2026-08-18):
+=============================================
+Live versions of these release notes can be found at:
+  * https://bit.ly/openjdk25041
+
+* CVEs
+  - CVE-2026-60589
+  - CVE-2026-61308
+  - CVE-2026-70906
+  - CVE-2026-70907
+* Changes
+  - JDK-8382471: Improve Resource Resolving
+  - JDK-8384708: Enhance HTTP Connections
+  - JDK-8386205: Enhance TLS server
+  - JDK-8386298: Improve font loading
+  - JDK-8388788: Bump update version for OpenJDK: jdk-25.0.4.1
+  - JDK-8389945: [25u] Remove designator DEFAULT_PROMOTED_VERSION_PRE=ea for release 25.0.4.1
+
 New in release OpenJDK 25.0.4 (2026-07-21):
 ===========================================
 Live versions of these release notes can be found at:
   * https://bit.ly/openjdk2504
 
 * CVEs
+  - CVE-2026-46968
+  - CVE-2026-46917
+  - CVE-2026-47010
+  - CVE-2026-47021
+  - CVE-2026-47027
+  - CVE-2026-60147
+  - CVE-2026-47059
+  - CVE-2026-47063
+  - CVE-2026-41254
 * Changes
   - JDK-7184899: Test sun/java2d/X11SurfaceData/SharedMemoryPixmapsTest/SharedMemoryPixmapsTest.sh fail
   - JDK-8015444: java/awt/Focus/KeyStrokeTest.java sometimes fails
@@ -273,7 +300,6 @@ security-libs/javax.crypto:
 
 JDK-8347938: Add Support for the Latest ML-KEM and ML-DSA Private Key Encodings
 ===============================================================================
-
 This release of OpenJDK adds support for encoding ML-KEM and ML-DSA
 keys to PKCS#8 format using the DER-encoded ASN.1 CHOICE formats
 defined in Section 6, "Private Key Format" of RFC 9935 [0] and RFC
