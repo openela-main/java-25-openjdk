@@ -6,11 +6,11 @@
 # New Version-String scheme-style defines
 %global featurever 25
 %global interimver 0
-%global updatever 4
-%global patchver 1
-%global buildver 1
+%global updatever 5
+%global patchver 0
+%global buildver 8
 %global portablerelease 1
-%global rpmrelease 1
+%global rpmrelease 0
 
 # Define IcedTea version used for SystemTap tapsets and desktop file
 %global icedteaver      6.0.0pre00-c848b93a8598
@@ -1165,8 +1165,8 @@ Requires: ca-certificates
 # Require javapackages-filesystem for ownership of /usr/lib/jvm/ and macros
 Requires: javapackages-filesystem
 # Require zone-info data provided by tzdata-java sub-package
-# 2026b required as of JDK-8383175
-Requires: tzdata-java >= 2026b
+# 2026e required as of JDK-8393337
+Requires: tzdata-java >= 2026e
 # for support of kernel stream control
 # libsctp.so.1 is being `dlopen`ed on demand
 Requires: lksctp-tools%{?_isa}
@@ -1395,10 +1395,7 @@ Patch1001: fips-%{featurever}u-%{fipsver}.patch
 #
 #############################################
 
-# JDK-8347901: C2 should remove unused leaf / pure runtime calls
-Patch2002: jdk8347901-c2_unused_leaf_removal.patch
-# JDK-83787313: C2: performance regression due to missing constant folding for Math.pow()
-Patch2003: jdk8378713-c2_missing_pow_constant_folding.patch
+# Currently empty
 
 #############################################
 #
@@ -1463,8 +1460,8 @@ BuildRequires: %{pkgnameroot}-misc = %{epoch}:%{version}-%{prelease}.%{portables
 %ifarch %{zero_arches}
 BuildRequires: libffi-devel
 %endif
-# 2026b required as of JDK-8383175
-BuildRequires: tzdata-java >= 2026b
+# 2026e required as of JDK-8393337
+BuildRequires: tzdata-java >= 2026e
 # Earlier versions have a bug in tree vectorization on PPC
 BuildRequires: gcc >= 4.8.3-8
 
@@ -1922,9 +1919,6 @@ sh %{SOURCE12} %{top_level_dir_name}
 pushd %{top_level_dir_name}
 # Add crypto policy and FIPS support
 %patch -P1001 -p1
-# Add C2 patches
-%patch -P2002 -p1
-%patch -P2003 -p1
 popd # openjdk
 
 # Patch NSS adapter
@@ -2596,6 +2590,19 @@ exit 0
 %endif
 
 %changelog
+* Mon Oct 19 2026 Thomas Fitzsimmons <fitzsim@redhat.com> - 1:25.0.5.0.8-1.0
+- Update to jdk-25.0.5+8 (GA)
+- ** This tarball is embargoed until 2026-10-20 @ 1pm PT. **
+- Update release notes to jdk-25.0.5+8
+- Remove upstreamed jdk8347901-c2_unused_leaf_removal.patch
+- Remove upstreamed jdk8378713-c2_missing_pow_constant_folding.patch
+- Set tzdata requires and build requires to 2026e
+- Sync the copy of the portable specfile with the latest update
+
+* Sun Aug 23 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.4.1.1-2.1
+- Sync the copy of the portable specfile with the latest update
+- Related: RHEL-235632
+
 * Fri Aug 07 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.4.1.1-1.1
 - Update to jdk-25.0.4.1+1 (GA)
 - Update release notes to 25.0.4.1+1
