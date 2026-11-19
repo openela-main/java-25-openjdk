@@ -7,15 +7,15 @@
 %global featurever 25
 %global interimver 0
 %global updatever 5
-%global patchver 0
-%global buildver 8
+%global patchver 1
+%global buildver 2
 %global portablerelease 1
-%global rpmrelease 0
+%global rpmrelease 1
 
 # Define IcedTea version used for SystemTap tapsets and desktop file
 %global icedteaver      6.0.0pre00-c848b93a8598
 # Define current Git revision for the FIPS support patches
-%global fipsver 57722aab802
+%global fipsver 9082dbb596c
 # Define nssadapter variables
 %global nssadapter_version 0.1.1
 %global nssadapter_name nssadapter-%{nssadapter_version}
@@ -1165,8 +1165,8 @@ Requires: ca-certificates
 # Require javapackages-filesystem for ownership of /usr/lib/jvm/ and macros
 Requires: javapackages-filesystem
 # Require zone-info data provided by tzdata-java sub-package
-# 2026e required as of JDK-8393337
-Requires: tzdata-java >= 2026e
+# 2026f required as of JDK-8396048
+Requires: tzdata-java >= 2026f
 # for support of kernel stream control
 # libsctp.so.1 is being `dlopen`ed on demand
 Requires: lksctp-tools%{?_isa}
@@ -1323,35 +1323,38 @@ Source16: CheckVendor.java
 # Ensure translations are available for new timezones
 Source18: TestTranslations.java
 
+# Ensure cacerts has no compromised certificates
+Source19: CheckCerts.java
+
 # Include portable spec and instructions on how to rebuild
-Source19: README.md
-Source20: java-%{featurever}-openjdk-portable.specfile
-Source21: NEWS
-Source22: openjdk-devkit.specfile
+Source200: README.md
+Source201: java-%{featurever}-openjdk-portable.specfile
+Source202: NEWS
+Source203: openjdk-devkit.specfile
 # Devkit patches; see https://github.com/rh-openjdk/jdk/tree/devkit
 # To regenerate, use git format-patch -N jdk21u/master
 # Add RHEL RPM URLs and turn off robots
-Source23: 0001-Allow-devkit-to-work-with-RHEL.patch
+Source204: 0001-Allow-devkit-to-work-with-RHEL.patch
 # Turn off multilib on x86_64
-Source24: 0002-Disable-multilib-on-x86_64.patch
+Source205: 0002-Disable-multilib-on-x86_64.patch
 # Improve build logging (OPENJDK-3071)
-Source25: 0003-Log-devkit-build-to-stdout.patch
+Source206: 0003-Log-devkit-build-to-stdout.patch
 # Remove .comment sections from sysroot objects
-Source26: 0004-devkit-Remove-.comment-sections-from-sysroot-objects.patch
+Source207: 0004-devkit-Remove-.comment-sections-from-sysroot-objects.patch
 # Configure binutils with --enable-deterministic-archives
-Source27: 0005-Tools.gmk-Configure-binutils-with-enable-determinist.patch
+Source208: 0005-Tools.gmk-Configure-binutils-with-enable-determinist.patch
 # Configure gcc with --enable-linker-build-id (OPENJDK-3068)
-Source28: 0006-Tools.gmk-Add-enable-linker-build-id-to-gcc-build.patch
+Source209: 0006-Tools.gmk-Add-enable-linker-build-id-to-gcc-build.patch
 # Exclude systemtap-sdt-devel on s390x & ppc64* (OPENJDK-3070)
-Source29: 0007-Tools.gmk-Exclude-systemtap-sdt-devel-on-s390x-ppc64.patch
+Source210: 0007-Tools.gmk-Exclude-systemtap-sdt-devel-on-s390x-ppc64.patch
 # Use update repository on RHEL rather than GA (OPENJDK-3589)
-Source30: 0008-Tools.gmk-Use-update-repository-on-RHEL-rather-than-.patch
+Source211: 0008-Tools.gmk-Use-update-repository-on-RHEL-rather-than-.patch
 
 # FIPS support sources.
 # For libnssadapter.so (RHEL-128413)
-Source31: https://github.com/rh-openjdk/nss-native-fips-key-import-export-adapter/releases/download/%{nssadapter_version}/%{nssadapter_name}.tar.xz
+Source212: https://github.com/rh-openjdk/nss-native-fips-key-import-export-adapter/releases/download/%{nssadapter_version}/%{nssadapter_name}.tar.xz
 # Create OpenJDK's crypto-policies hierarchy (RHEL-128409)
-Source32: create-redhat-properties-files.bash
+Source213: create-redhat-properties-files.bash
 
 # Setup variables to reference correct sources
 %global releasezip %{_jvmdir}/%{name}-%{version}-%{prelease}.portable.unstripped.jdk.%{_arch}.tar.xz
@@ -1460,8 +1463,8 @@ BuildRequires: %{pkgnameroot}-misc = %{epoch}:%{version}-%{prelease}.%{portables
 %ifarch %{zero_arches}
 BuildRequires: libffi-devel
 %endif
-# 2026e required as of JDK-8393337
-BuildRequires: tzdata-java >= 2026e
+# 2026f required as of JDK-8396048
+BuildRequires: tzdata-java >= 2026f
 # Earlier versions have a bug in tree vectorization on PPC
 BuildRequires: gcc >= 4.8.3-8
 
@@ -1484,7 +1487,7 @@ BuildRequires: libpng-devel
 BuildRequires: zlib-devel
 %else
 # Version in src/java.desktop/share/legal/freetype.md
-Provides: bundled(freetype) = 2.14.3
+Provides: bundled(freetype) = 2.15.0
 # Version in src/java.desktop/share/native/libsplashscreen/giflib/gif_lib.h
 Provides: bundled(giflib) = 6.1.3
 # Version in src/java.desktop/share/native/libharfbuzz/hb-version.h
@@ -1494,7 +1497,7 @@ Provides: bundled(lcms2) = 2.19.1
 # Version in src/java.desktop/share/native/libjavajpeg/jpeglib.h
 Provides: bundled(libjpeg) = 6b
 # Version in src/java.desktop/share/native/libsplashscreen/libpng/png.h
-Provides: bundled(libpng) = 1.6.58
+Provides: bundled(libpng) = 1.6.59
 # Version in src/java.base/share/native/libzip/zlib/zlib.h
 Provides: bundled(zlib) = 1.3.2
 %endif
@@ -1899,7 +1902,7 @@ fi
 export XZ_OPT="-T0"
 %setup -q -c -n %{uniquesuffix ""} -T -a 0
 # Prepare libnssadapter.so source code
-tar -xJf %{SOURCE31}
+tar -xJf %{SOURCE212}
 # https://bugzilla.redhat.com/show_bug.cgi?id=1189084
 prioritylength=`expr length %{priority}`
 if [ $prioritylength -ne 8 ] ; then
@@ -1972,7 +1975,7 @@ function customisejdk() {
     if [ -d ${imagepath} ] ; then
         # Install crypto-policies FIPS configuration files and append
         # include line to java.security
-        bash -ex %{SOURCE32} ${imagepath}/conf/security %{_libdir}/%{sdkdir -- ${suffix}}/libnssadapter.so
+        bash -ex %{SOURCE213} ${imagepath}/conf/security %{_libdir}/%{sdkdir -- ${suffix}}/libnssadapter.so
 
         # Use system-wide tzdata
         rm ${imagepath}/lib/tzdb.dat
@@ -2140,6 +2143,9 @@ readelf --debug-dump $STATIC_LIBS_HOME/libnet.a | grep Inet6AddressImpl.c
 %endif
 %endif
 
+# Check cacerts has no compromised certificates
+$JAVA_HOME/bin/java %{SOURCE19}
+
 so_suffix="so"
 # Check debug symbols are present and can identify code
 find "$JAVA_HOME" -iname "*.$so_suffix" -print0 | while read -d $'\0' lib
@@ -2223,12 +2229,15 @@ miscdir=$(pwd)/%{installoutputdir -- "-misc"}
 # Install release notes and rebuild instructions
 commondocdir=${RPM_BUILD_ROOT}%{_defaultdocdir}/%{uniquejavadocdir -- $suffix}
 install -d -m 755 ${commondocdir}
+# Use NEWS from RPM sources if different from portable version
+if ! diff %{SOURCE202} ${jdk_image}/NEWS; then cp -a %{SOURCE202} ${jdk_image}/NEWS; fi
 mv ${jdk_image}/NEWS ${commondocdir}
 # Copy portable and devkit specfiles and README.md
-cp -a %{SOURCE19} %{SOURCE20} %{SOURCE22} ${commondocdir}
+cp -a %{SOURCE200} %{SOURCE201} %{SOURCE203} ${commondocdir}
 # Copy devkit patches
-cp -a  %{SOURCE23} %{SOURCE24} %{SOURCE25} %{SOURCE26} \
-       %{SOURCE27} %{SOURCE28} %{SOURCE29} %{SOURCE30} ${commondocdir}
+cp -a  %{SOURCE204} %{SOURCE205} %{SOURCE206} %{SOURCE207} \
+       %{SOURCE208} %{SOURCE209} %{SOURCE210} %{SOURCE211} \
+       ${commondocdir}
 
 # Install the jdk
 mkdir -p $RPM_BUILD_ROOT%{_jvmdir}
@@ -2590,14 +2599,38 @@ exit 0
 %endif
 
 %changelog
+* Wed Nov 18 2026 Thomas Fitzsimmons <fitzsim@redhat.com> - 1:25.0.5.1.2-1.1
+- Add check for compromised eMudhra certificates in cacerts
+- Resolves: RHEL-309218
+
+* Sat Nov 14 2026 Andrew Hughes <gnu_andrew@linux.ibm.com> - 1:25.0.5.1.2-1.1
+- Update to jdk-25.0.5.1+2 (GA)
+- Update release notes to 25.0.5.1+2
+- Drop JDK-8395690 & JDK-8395142 patches now upstream in 25.0.5.0.2 & 25.0.5.0.3
+- Sync NEWS file with vanilla branch
+- Bump freetype version to 2.15.0 following JDK-8394492
+- Bump libpng version to 1.6.59 following JDK-8393195
+- Require tzdata 2026f due to upstream inclusion of JDK-8396048
+- Turn off hybrid provider in FIPS mode until PKCS11 supports PQC
+- Renumber sources which only exist in the RPM to avoid collisions with portable
+- Install the NEWS file from the RPM sources, not the portable, if different
+- Sync the copy of the portable specfile with the latest update
+- Update tagged versions to include 9.9.0-z, 9.10.0, 10.3-z & 10.4.
+- ** This tarball is embargoed until 2026-08-18 @ 1pm PT. **
+- Resolves: RHEL-307415
+- Resolves: RHEL-307340
+- Resolves: RHEL-309185
+- Related: RHEL-309218
+- Resolves: RHEL-309208
+
 * Mon Oct 19 2026 Thomas Fitzsimmons <fitzsim@redhat.com> - 1:25.0.5.0.8-1.0
 - Update to jdk-25.0.5+8 (GA)
-- ** This tarball is embargoed until 2026-10-20 @ 1pm PT. **
 - Update release notes to jdk-25.0.5+8
-- Remove upstreamed jdk8347901-c2_unused_leaf_removal.patch
-- Remove upstreamed jdk8378713-c2_missing_pow_constant_folding.patch
-- Set tzdata requires and build requires to 2026e
+- Drop local C2 patches now JDK-8347901 & JDK-8378713 are included upstream
+- Require tzdata 2026e due to upstream inclusion of JDK-8388214, JDK-8392377 & JDK-8393337
 - Sync the copy of the portable specfile with the latest update
+- ** This tarball is embargoed until 2026-10-20 @ 1pm PT. **
+- Resolves: RHEL-288529
 
 * Sun Aug 23 2026 Andrew Hughes <gnu.andrew@redhat.com> - 1:25.0.4.1.1-2.1
 - Sync the copy of the portable specfile with the latest update

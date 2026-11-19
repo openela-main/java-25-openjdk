@@ -3,8 +3,133 @@ Key:
 JDK-X  - https://bugs.openjdk.java.net/browse/JDK-X
 CVE-XXXX-YYYY: https://cve.mitre.org/cgi-bin/cvename.cgi?name=XXXX-YYYY
 
+New in release OpenJDK 25.0.5.1 (2026-11-17):
+=============================================
+Live versions of these release notes can be found at:
+  * https://bit.ly/openjdk25051
+
+* CVEs
+  - CVE-2026-114938
+  - CVE-2026-114939
+  - CVE-2026-114940
+  - CVE-2026-114941
+  - CVE-2026-114942
+  - CVE-2026-114943
+  - CVE-2026-114944
+  - CVE-2026-114945
+  - CVE-2026-114946
+  - CVE-2026-114947
+* Changes
+  - JDK-8387162: Enhance Kerberos tickets
+  - JDK-8387351: Enhance TLS connections
+  - JDK-8387541: Enhance StringBuilder checks
+  - JDK-8389830: Enhance JFR Events
+  - JDK-8389989: Enhance loop handling
+  - JDK-8390694: Enhance vector masks
+  - JDK-8390852: Improve integer compression
+  - JDK-8391595: [REDO] Enhance JMX Connections
+  - JDK-8393195: Update Libpng to 1.6.59
+  - JDK-8393212: Base64 optimization improvements
+  - JDK-8393456: Improve TLS client connections
+  - JDK-8394492: Update FreeType to 2.15.0
+  - JDK-8394663: Bump update version for OpenJDK: jdk-25.0.5.1
+  - JDK-8396048: (tz) Update to tzdata2026f
+
+Notes on individual issues:
+===========================
+
+security-libs/org.ietf.jgss:krb5:
+
+JDK-8387162: Enhance Kerberos tickets
+=====================================
+A Kerberos Ticket-Granting Ticket (TGT) may contain a transited field
+[0] which lists the other realms the ticket has passed through.  With
+this OpenJDK release, this field is now checked to make sure that each
+transited realm is in the list of allowed realms retrieved from
+sun.security.krb5.Realm.getRealmsList(String, String).  If the check
+fails, a KrbApErrException is thrown with KRB_AP_PATH_NOT_ACCEPTED as
+the reason.
+
+This check is enabled by default.  To retain the original behaviour,
+the new System property
+`sun.security.krb5.acceptor.checkTransitedPolicy` should be set to
+`false`.
+
+[0] https://datatracker.ietf.org/doc/html/rfc4120#section-3.3.3.2
+
+JDK-8391595: [REDO] Enhance JMX Connections
+===========================================
+The RMI stub URL service:jmx:rmi:///stub/<base64> carries a serialized
+Java object, encoded as base64.  With this OpenJDK release,
+deserialization of this object is now filtered to ensure it is of an
+appropriate type.  The default list of approved types is:
+
+* "java.lang.reflect.Proxy;"
+* "java.rmi.server.RemoteObjectInvocationHandler;"
+* "com.sun.proxy.$Proxy*;"
+* "java.rmi.server.RemoteStub;"
+* "java.rmi.server.RemoteObject;"
+* "javax.management.remote.rmi.RMIServerImpl_Stub;"
+
+This list is always checked.  Additional classes may be prepended to
+the list by using the environment map passed to the `connect` method
+and by setting a System property.  Both settings share the same key
+`jmx.remote.rmi.connector.url.filter.pattern` and both sources of
+additional classes are always checked.
+
+New in release OpenJDK 25.0.5.0.3 (2026-10-27):
+===============================================
+Live versions of these release notes can be found at:
+  * https://bit.ly/openjdk2505
+
+* CVEs
+  - CVE-2026-114820
+* Changes
+  - JDK-8385585: EmSignRootG2CA.java test fails with: couldn't determine EE certificate status
+  - JDK-8395690: CA certificate improvements
+  - JDK-8395786: Bump update version for OpenJDK: jdk-25.0.5.0.3
+  - JDK-8395979: [25u] Remove designator DEFAULT_PROMOTED_VERSION_PRE=ea for release 25.0.5.0.3
+
+Notes on individual issues:
+===========================
+
+JDK-8395690: CA certificate improvements
+========================================
+The following root certificates associated with eMudhra have been
+removed from the `cacerts` keystore:
+
+Alias Name: comodoaaaca [jdk]
+Distinguished Name: CN=AAA Certificate Services, O=Comodo CA Limited, L=Salford, ST=Greater Manchester, C=GB
+SHA256: D7:A7:A0:FB:5D:7E:27:31:D7:71:E9:48:4E:BC:DE:F7:1D:5F:0C:3E:0A:29:48:78:2B:C8:3E:E0:EA:69:9E:F4
+
+Alias Name: emsignrootcag1 [jdk]
+Distinguished Name: CN=emSign Root CA - G1, O=eMudhra Technologies Limited, OU=emSign PKI, C=IN
+SHA256: 40:F6:AF:03:46:A9:9A:A1:CD:1D:55:5A:4E:9C:CE:62:C7:F9:63:46:03:EE:40:66:15:83:3D:C8:C8:D0:03:67
+
+Alias Name: emsigneccrootcag3 [jdk]
+Distinguished Name: CN=emSign ECC Root CA - G3, O=eMudhra Technologies Limited, OU=emSign PKI, C=IN
+SHA256: 86:A1:EC:BA:08:9C:4A:8D:3B:BE:27:34:C6:12:BA:34:1D:81:3E:04:3C:F9:E8:A8:62:CD:5C:57:A3:6B:BE:6B
+
+Alias Name: emsignrootcag2 [jdk]
+Distinguished Name: CN=emSign Root CA - G2, O=eMudhra Technologies Limited, OU=emSign PKI, C=IN
+SHA256: 1A:A0:C2:70:9E:83:1B:D6:E3:B5:12:9A:00:BA:41:F7:EE:EF:02:08:72:F1:E6:50:4B:F0:F6:C3:F2:4F:3A:F3
+
+New in release OpenJDK 25.0.5.0.2 (2026-10-22):
+===============================================
+Live versions of these release notes can be found at:
+  * https://bit.ly/openjdk2505
+
+* CVEs
+  - CVE-2026-91403
+* Changes
+  - JDK-8395142: CA Enhancements
+  - JDK-8395372: Bump update version for OpenJDK: jdk-25.0.5.0.2
+  - JDK-8395622: [25u] Remove designator DEFAULT_PROMOTED_VERSION_PRE=ea for release 25.0.5.0.2
+
 New in release OpenJDK 25.0.5 (2026-10-20):
 ===========================================
+Live versions of these release notes can be found at:
+  * https://bit.ly/openjdk2505
 
 * CVEs
   - CVE-2026-83374
@@ -14,39 +139,39 @@ New in release OpenJDK 25.0.5 (2026-10-20):
   - CVE-2026-83381
   - CVE-2026-83387
   - CVE-2026-83395
-  - CVE-2026-87294
+  - CVE-2026-83400
   - CVE-2026-87255
   - CVE-2026-87290
   - CVE-2026-87291
   - CVE-2026-87292
-  - CVE-2026-83400
+  - CVE-2026-87294
+  - CVE-2026-87367
+  - CVE-2026-91332
   - CVE-2026-91333
   - CVE-2026-91334
-  - CVE-2026-87367
   - CVE-2026-91335
+  - CVE-2026-91373
+  - CVE-2026-91374
   - CVE-2026-91375
   - CVE-2026-91379
+  - CVE-2026-91379
   - CVE-2026-91380
-  - CVE-2026-91373
-  - CVE-2026-91332
-  - CVE-2026-91382
-  - CVE-2026-91374
   - CVE-2026-91394
   - CVE-2026-91397
   - CVE-2026-91398
   - CVE-2026-91400
   - CVE-2026-91410
-  - CVE-2026-91411
   - CVE-2026-91415
+  - CVE-2026-91418
   - CVE-2026-91451
   - CVE-2026-91452
   - CVE-2026-91453
-  - CVE-2026-91418
   - CVE-2026-91461
   - CVE-2026-91462
   - CVE-2026-91463
   - CVE-2026-91464
   - CVE-2026-91487
+  - CVE-2026-101516
 * Changes
   - JDK-7067310: 3 tests from closed/javax/sound/sampled caused BSOD on win 7 x86
   - JDK-8247690: RunTest does not support running of JTREG manual tests
@@ -175,7 +300,7 @@ New in release OpenJDK 25.0.5 (2026-10-20):
   - JDK-8384654: Enhance Template Handling
   - JDK-8384664: Enhance Image Handling
   - JDK-8384688: Enhance jmod handling
-  - JDK-8384736: Enhance JShell 8387235: JShell tests failing
+  - JDK-8384736: Enhance JShell
   - JDK-8384746: Enhance Preferences
   - JDK-8384771: Enhance TLS handshakes
   - JDK-8384804: JMX remote bootstrap tests fail on Windows
@@ -199,7 +324,6 @@ New in release OpenJDK 25.0.5 (2026-10-20):
   - JDK-8386515: Enhance HTTP server parsing
   - JDK-8386525: Enhance HTTP Server Handler
   - JDK-8386535: Improve HTTP headers
-  - JDK-8386551: Windows build broken because of MSys2/Make update
   - JDK-8386552: Enhance GIF loading
   - JDK-8386578: double_keccak stub does not set its return value on x86
   - JDK-8386600: Fix comparison checks in DHasKEM
@@ -214,6 +338,7 @@ New in release OpenJDK 25.0.5 (2026-10-20):
   - JDK-8387124: Incomplete algorithm decomposition for TLS 1.3 cipher suites in SSLAlgorithmDecomposer
   - JDK-8387152: Enhance krb5 tokens
   - JDK-8387217: Enhance krb5 client
+  - JDK-8387235: JShell tests failing
   - JDK-8387238: Enhance Kerberos validation
   - JDK-8387381: RISC-V: assert failed with fastdebug build on systems with different core types
   - JDK-8387391: hotspot_gc_shenandoah should include gtests
@@ -246,42 +371,129 @@ New in release OpenJDK 25.0.5 (2026-10-20):
   - JDK-8393337: (tz) Update Timezone Data to 2026e
   - JDK-8393344: Cherry-pick metazone changes from CLDR to support tzdata2026e for JDK update releases
   - JDK-8393848: Align the JDK with Microsoft's new timezone name for Manitoba
+  - JDK-8394843: [25u] Remove designator DEFAULT_PROMOTED_VERSION_PRE=ea for release 25.0.5
 
 Notes on individual issues:
 ===========================
 
-security-libs/javax.net.ssl:
+core-libs/java.sql:
 
-JDK-8314323: Add support for Post-Quantum Hybrid Key Exchange for TLS 1.3
-=========================================================================
-This release adds TLS 1.3 hybrid key exchange algorithm support, to harden
-OpenJDK against quantum computing attacks.  The new algorithms are
-SecP384r1MLKEM1024, SecP256r1MLKEM768, and X25519MLKEM768.  The preferred, most
-widely-deployed group is X25519MLKEM768 and it is the default.  It will be used
-automatically with servers that support it.
+JDK-8383301: Enhance WebRowSets
+===============================
+WebRowSet XML is now validated against the standard schema, which is
+packaged with this release (webrowset.xsd and sqlxml.xsd).  If
+validation causes issues with legacy documents, it may be disabled by
+setting the new System property `jdk.sql.rowset.webrowsetValidation`
+to `false`.
+
+core-libs/javax.naming:
+
+JDK-8382407: Enhance LDAP Lookups
+=================================
+In the October 2024 security update, the LDAP provider was altered to
+require an explicit opt-in for the transparent deserialisation of Java
+objects.  Since that release, applications that wish to reconstruct
+Java objects and RMI stubs from LDAP attributes have needed to set the
+System property `com.sun.jndi.ldap.object.trustSerialData` to `true`.
+
+A new System property is introduced in this release,
+`jdk.jndi.ldap.disabledURLSchemes`, to increase the flexibility of
+this filtering.  By default, the setting of this new property will
+follow `com.sun.jndi.ldap.object.trustSerialData` by being set to
+empty if `trustSerialData` is `true` (i.e. no filtering) and "rmi" if
+`trustSerialData` is `false` (the default).  Setting the new property
+to a comma-separated list of schemes allows further filtering to be
+specified, superseding the limited filtering of `trustSerialData`.
 
 security-libs/java.security:
 
-JDK-8343232: Support RFC 9879 (PBMAC1) in PKCS12 KeyStores
-==========================================================
-This release adds support for the PBMAC1 integrity protection algorithm.  To
-enable it, set the keystore.pkcs12.macAlgorithm security property (in
-java.security) to one of the PBMAC1 algorithms, for example PBEWithHmacSHA256.
-New keystores created with this setting in place will use the PBMAC1 algorithm.
-Existing PKCS12 keystore files are not converted automatically and will continue
-using the algorithm with which they were created.  In a future release,
-keystore.pkcs12.macAlgorithm will default to a PBMAC1 algorithm.
+JDK-8343232: PKCS#12 KeyStore support for RFC 9879: Use of Password-Based Message Authentication Code 1 (PBMAC1)
+================================================================================================================
+With this release, the PKCS12 `KeyStore` implementation now supports
+the PBMAC1 algorithm for integrity protection.  To use this new
+algorithm, set the `keystore.pkcs12.macAlgorithm` property in the
+`java.security` configuration file to a PBMAC1-based algorithm.  For
+example,
 
-JDK-8387123: LuxTrust Global Root CA Removed
-============================================
-The following root certificates from LuxTrust has been removed from the
+keystore.pkcs12.macAlgorithm = PBEWithHmacSHA256
+
+The new algorithm only takes effect on newly created keystores.
+Existing PKCS12 keystore files will continue to use the algorithm they
+were created with.
+
+JDK-8387123: Remove LuxTrust Global Root CA
+===========================================
+The following root certificate from LuxTrust has been removed from the
 `cacerts` keystore:
 
-Alias name: luxtrustglobalrootca [jdk]
-CN=LuxTrust Global Root
-O=LuxTrust s.a.
-C=LU
+Alias Name: luxtrustglobalrootca [jdk]
+Distinguished Name: CN=LuxTrust Global Root, O=LuxTrust s.a., C=LU
 SHA256: A1:B2:DB:EB:64:E7:06:C6:16:9E:3C:41:18:B2:3B:AA:09:01:8A:84:27:66:6D:8B:F0:E2:88:91:EC:05:19:50
+
+security-libs/javax.net.ssl:
+
+JDK-8314323: Implement JEP 527: TLS 1.3 Hybrid Key Exchange
+===========================================================
+This release enhances the security of Java applications by providing
+an implementation of hybrid key exchange algorithms for TLS 1.3.
+These hybrid algorithms are designed to defend against future quantum
+computing attacks by combining a quantum-resistant algorithm with a
+traditional algorithm.
+
+The following algorithms are now supported:
+
+* X25519MLKEM768
+* SecP256r1MLKEM768
+* SecP384r1MLKEM1024
+
+The `X25519MLKEM768` group is enabled by default and is the most
+preferred group.  No API or configuration changes are needed.  If both
+peers in a TLS exchange support the `X25519MLKEM768` group, and it is
+the most preferred group, it will be used for that transaction.
+
+To verify that a post-quantum hybrid group was negotiated by the TLS
+handshake, JSSE debugging may be enabled by setting the `javax.net.debug`
+System property to `ssl:handshake`.  The contents of the `key_share`
+extension in the `ServerHello` message should read as follows if a
+hybrid group was negotiated:
+
+"key_share (51)": { "server_share": { "named group": <group_name> } }
+
+where `<group_name>` is the hybrid group negotiated.
+
+To disable negotiation with the `X25519MLKEM768` hybrid group, the
+`jdk.tls.namedGroups` property may be set to a list of groups which
+excludes it.  For example:
+
+-Djdk.tls.namedGroups=x25519,secp256r1,secp384r1,secp521r1,x448,ffdhe2048,ffdhe3072,ffdhe4096,ffdhe6144,ffdhe8192
+
+tools/jshell:
+
+JDK-8384736: Enhance JShell
+===========================
+Changes in this update have led to a minor change to the jdk.jshell
+API.  The method `extensionCommand(String command, Object arg)` in the
+`jdk.jshell.execution.StreamingExecutionControl` class now always
+throws `NotImplementedException`, whereas it previously could throw
+one of `RunException`, `EngineTerminationException` or
+`InternalException`.
+
+xml/jaxp:
+
+JDK-8383699: Enhance XPath Expressions
+======================================
+The XSLT function `system-property()` can be used to access system
+properties of the JDK.  In this release, this access is now restricted
+to those properties defined by XSLT.  To access all system properties
+as before, the new System property `jdk.xml.allowNonXSLTSysProps` must
+be set to `true`.
+
+JDK-8384654: Enhance Template Handling
+======================================
+In this release, the deserialization of instances of the
+`TemplatesImpl` class is now disabled by default.  To re-enable
+deserialization, the System property
+`jdk.xml.enableTemplatesImplDeserialization` must be set to `true`
 
 New in release OpenJDK 25.0.4.1 (2026-08-18):
 =============================================
