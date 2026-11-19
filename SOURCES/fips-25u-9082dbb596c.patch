@@ -1,8 +1,8 @@
 diff --git a/src/java.base/share/classes/java/security/Provider.java b/src/java.base/share/classes/java/security/Provider.java
-index de2845fb550..60eeab678ca 100644
+index de2845fb550..906f727022f 100644
 --- a/src/java.base/share/classes/java/security/Provider.java
 +++ b/src/java.base/share/classes/java/security/Provider.java
-@@ -1203,6 +1203,34 @@ public Set<Service> getServices() {
+@@ -1203,6 +1203,40 @@ public Set<Service> getServices() {
          return serviceSet;
      }
  
@@ -11,6 +11,12 @@ index de2845fb550..60eeab678ca 100644
 +        static final boolean IS_ON = Boolean.parseBoolean(
 +                Security.getProperty("__redhat_fips_filter__"));
 +        private static final Map<String, Set<String>> ALLOW_LIST = Map.of(
++                // OPENJDK-5271: keep the intermediary HybridProvider disabled
++                // until a FIPS-validated PQC implementation becomes available
++                // through SunPKCS11 (or a newer FIPS provider). This prevents
++                // the X25519MLKEM768 hybrid key exchange named group from
++                // being selected, which would otherwise break TLS 1.3.
++                "HybridAndDHAsKEM", Set.of(),
 +                "SUN", Set.of(
 +                        "AlgorithmParameterGenerator",
 +                        "AlgorithmParameters", "CertificateFactory",
@@ -37,7 +43,7 @@ index de2845fb550..60eeab678ca 100644
      /**
       * Add a service. If a service of the same type with the same algorithm
       * name exists, and it was added using {@link #putService putService()},
-@@ -1231,6 +1259,15 @@ protected void putService(Service s) {
+@@ -1231,6 +1265,15 @@ protected void putService(Service s) {
                      ("service.getProvider() must match this Provider object");
          }
          String type = s.getType();
@@ -54,10 +60,10 @@ index de2845fb550..60eeab678ca 100644
          ServiceKey key = new ServiceKey(type, algorithm, true);
          implRemoveService(serviceMap.get(key));
 diff --git a/src/java.base/share/classes/java/security/Security.java b/src/java.base/share/classes/java/security/Security.java
-index 6969fe8a8e1..4501d5971c4 100644
+index 30a22b05742..8d7ead5c322 100644
 --- a/src/java.base/share/classes/java/security/Security.java
 +++ b/src/java.base/share/classes/java/security/Security.java
-@@ -323,7 +323,27 @@ public Properties getInitialProperties() {
+@@ -334,7 +334,27 @@ public Properties getInitialProperties() {
      }
  
      private static void initialize() {
